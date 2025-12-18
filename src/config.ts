@@ -8,7 +8,7 @@ configDotenv({
 			? '.env.test'
 			: process.env.NODE_ENV === 'production'
 				? '.env.production'
-				: '.env',
+				: '.env.development',
 })
 
 interface Config {
