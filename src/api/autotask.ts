@@ -20,10 +20,38 @@ export interface AutotaskTicketResponse {
 	}
 }
 
+export interface TicketDetails {
+	id: string
+	ticketNumber: string
+	assignedResourceID?: string
+	title: string
+	status: number
+	priority: number
+}
+
+export interface AutotaskQueryResponse<T> {
+	items: T[]
+	pageDetails?: {
+		count: number
+		requestCount: number
+	}
+}
+
+export interface ResourceDetails {
+	id: string
+	firstName: string
+	lastName: string
+	email?: string
+	officePhone?: string
+	mobilePhone?: string
+	homePhone?: string
+	officeExtension?: string
+}
+
 // Simple rate limiter for Autotask API calls
 class RateLimiter {
 	private lastCallTime = 0
-	private readonly minInterval = 1000 // Minimum 1 second between calls
+	private readonly minInterval = 10 // Minimum 10 milliseconds between calls
 
 	async waitForTurn(): Promise<void> {
 		const now = Date.now()
@@ -128,6 +156,171 @@ ${params.issueDescription}`
 		})
 
 		req.write(postData)
+		req.end()
+	})
+}
+
+/**
+ * Get ticket details by ticket ID
+ */
+export async function getTicketById(ticketId: string): Promise<TicketDetails> {
+	// Rate limit API calls
+	await rateLimiter.waitForTurn()
+
+	logger.info({ ticketId }, 'Getting ticket details from Autotask')
+
+	const options = {
+		hostname: config.autotask.hostname,
+		path: `/ATServicesRest/V1.0/Tickets/${ticketId}`,
+		method: 'GET',
+		headers: {
+			Host: config.autotask.hostname,
+			Accept: 'application/json',
+			'User-Agent': 'Node.js',
+			ApiIntegrationCode: config.autotask.apiIntegrationCode,
+			UserName: config.autotask.username,
+			Secret: config.autotask.secret
+		}
+	}
+
+	return new Promise<TicketDetails>((resolve, reject) => {
+		const req = https.request(options, (res) => {
+			logger.debug({ statusCode: res.statusCode, ticketId }, 'Get ticket response received')
+
+			let responseData = ''
+			res.on('data', (chunk) => {
+				responseData += chunk
+			})
+
+			res.on('end', () => {
+				if (!responseData || responseData.trim() === '') {
+					return reject(new Error(`Autotask returned empty response (HTTP ${res.statusCode})`))
+				}
+
+				try {
+					const data = JSON.parse(responseData)
+
+					if (res.statusCode !== 200) {
+						logger.error({ statusCode: res.statusCode, response: data }, 'Get ticket API error')
+						return reject(
+							new Error(`Failed to get ticket: ${res.statusCode} - ${JSON.stringify(data)}`)
+						)
+					}
+
+					const ticket = data.item
+					if (!ticket) {
+						return reject(new Error('No ticket data returned'))
+					}
+
+					logger.info({ ticketId, ticketNumber: ticket.ticketNumber }, 'Ticket retrieved successfully')
+					resolve({
+						id: ticket.id,
+						ticketNumber: ticket.ticketNumber,
+						assignedResourceID: ticket.assignedResourceID,
+						title: ticket.title,
+						status: ticket.status,
+						priority: ticket.priority
+					})
+				} catch (e) {
+					logger.error(
+						{ error: e, response: responseData.substring(0, 200) },
+						'Invalid JSON from Autotask'
+					)
+					reject(new Error(`Invalid JSON response: ${responseData.substring(0, 200)}`))
+				}
+			})
+		})
+
+		req.on('error', (error) => {
+			logger.error({ error }, 'Get ticket API request error')
+			reject(error)
+		})
+
+		req.end()
+	})
+}
+
+/**
+ * Get resource details by resource ID
+ */
+export async function getResourceById(resourceId: string): Promise<ResourceDetails> {
+	// Rate limit API calls
+	await rateLimiter.waitForTurn()
+
+	logger.info({ resourceId }, 'Getting resource details from Autotask')
+
+	const options = {
+		hostname: config.autotask.hostname,
+		path: `/ATServicesRest/V1.0/Resources/${resourceId}`,
+		method: 'GET',
+		headers: {
+			Host: config.autotask.hostname,
+			Accept: 'application/json',
+			'User-Agent': 'Node.js',
+			ApiIntegrationCode: config.autotask.apiIntegrationCode,
+			UserName: config.autotask.username,
+			Secret: config.autotask.secret
+		}
+	}
+
+	return new Promise<ResourceDetails>((resolve, reject) => {
+		const req = https.request(options, (res) => {
+			logger.debug({ statusCode: res.statusCode, resourceId }, 'Get resource response received')
+
+			let responseData = ''
+			res.on('data', (chunk) => {
+				responseData += chunk
+			})
+
+			res.on('end', () => {
+				if (!responseData || responseData.trim() === '') {
+					return reject(new Error(`Autotask returned empty response (HTTP ${res.statusCode})`))
+				}
+
+				try {
+					const data = JSON.parse(responseData)
+
+					if (res.statusCode !== 200) {
+						logger.error({ statusCode: res.statusCode, response: data }, 'Get resource API error')
+						return reject(
+							new Error(`Failed to get resource: ${res.statusCode} - ${JSON.stringify(data)}`)
+						)
+					}
+
+					const resource = data.item
+					if (!resource) {
+						return reject(new Error('No resource data returned'))
+					}
+
+					logger.info(
+						{ resourceId, name: `${resource.firstName} ${resource.lastName}` },
+						'Resource retrieved successfully'
+					)
+					resolve({
+						id: resource.id,
+						firstName: resource.firstName,
+						lastName: resource.lastName,
+						email: resource.email,
+						officePhone: resource.officePhone,
+						mobilePhone: resource.mobilePhone,
+						homePhone: resource.homePhone,
+						officeExtension: resource.officeExtension
+					})
+				} catch (e) {
+					logger.error(
+						{ error: e, response: responseData.substring(0, 200) },
+						'Invalid JSON from Autotask'
+					)
+					reject(new Error(`Invalid JSON response: ${responseData.substring(0, 200)}`))
+				}
+			})
+		})
+
+		req.on('error', (error) => {
+			logger.error({ error }, 'Get resource API request error')
+			reject(error)
+		})
+
 		req.end()
 	})
 }
