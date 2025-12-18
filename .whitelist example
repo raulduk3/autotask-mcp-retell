@@ -1,0 +1,10 @@
+# IP Whitelist
+# Add one IP address per line
+# Lines starting with # are comments
+# Example: 192.168.1.100
+
+# Localhost (for development)
+127.0.0.1
+::1
+
+# Add Retell IPs below (will be identified from logs)
