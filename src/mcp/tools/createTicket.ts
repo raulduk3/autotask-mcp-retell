@@ -106,7 +106,17 @@ export async function createTicketHandler(params: {
 					type: 'text',
 					text: responseText
 				}
-			]
+			],
+			structuredContent: {
+				success: true,
+				ticketId: ticketId,
+				ticketNumber: ticketDetails?.ticketNumber || null,
+				assignedResourceID: ticketDetails?.assignedResourceID || null,
+				assignedResourceName: resourceDetails
+					? `${resourceDetails.firstName} ${resourceDetails.lastName}`
+					: null,
+				transferPhone: transferPhone || null
+			}
 		}
 	} catch (error) {
 		logger.error(
@@ -125,6 +135,10 @@ export async function createTicketHandler(params: {
 					text: `Error creating ticket: ${error instanceof Error ? error.message : String(error)}`
 				}
 			],
+			structuredContent: {
+				success: false,
+				error: error instanceof Error ? error.message : String(error)
+			},
 			isError: true
 		}
 	}
