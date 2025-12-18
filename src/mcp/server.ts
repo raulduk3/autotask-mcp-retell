@@ -27,10 +27,13 @@ export function createMcpServer(): McpServer {
 			description: createTicketSchema.description,
 			inputSchema: createTicketSchema.inputSchema
 		},
-		createTicketHandler
+		async (params) => {
+			logger.info({ params }, 'Tool handler called')
+			return await createTicketHandler(params as any)
+		}
 	)
 
-	logger.debug({ tools: ['createTicket'] }, 'MCP server created with tools')
+	logger.info({ toolName: createTicketSchema.name }, 'MCP server created with tool registered')
 
 	return server
 }

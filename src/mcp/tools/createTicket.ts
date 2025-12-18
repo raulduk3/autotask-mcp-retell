@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
-import { createTicket } from '../../api/autotask.js'
+import { createTicket, getTicketById, getResourceById } from '../../api/autotask.js'
 import { logger } from '../../utils/logger.js'
 
 export const createTicketSchema = {
@@ -47,11 +47,64 @@ export async function createTicketHandler(params: {
 
 		logger.info({ ticketId, externalID: params.externalID }, 'Ticket created successfully via tool')
 
+		// Get ticket details to retrieve ticket number and assigned resource
+		let ticketDetails = null
+		let resourceDetails = null
+		let transferPhone = null
+
+		try {
+			ticketDetails = await getTicketById(ticketId)
+			logger.info(
+				{
+					ticketId,
+					ticketNumber: ticketDetails.ticketNumber,
+					assignedResourceID: ticketDetails.assignedResourceID
+				},
+				'Retrieved ticket details'
+			)
+
+			// If a resource is assigned, get their details for phone transfer
+			if (ticketDetails.assignedResourceID) {
+				try {
+					resourceDetails = await getResourceById(ticketDetails.assignedResourceID)
+					// Prefer mobile phone, then office phone
+					transferPhone = resourceDetails.mobilePhone || resourceDetails.officePhone
+
+					logger.info(
+						{
+							resourceId: resourceDetails.id,
+							resourceName: `${resourceDetails.firstName} ${resourceDetails.lastName}`,
+							transferPhone
+						},
+						'Retrieved assigned resource details'
+					)
+				} catch (resourceError) {
+					logger.warn(
+						{ error: resourceError, resourceId: ticketDetails.assignedResourceID },
+						'Failed to retrieve resource details'
+					)
+				}
+			}
+		} catch (ticketError) {
+			logger.warn({ error: ticketError, ticketId }, 'Failed to retrieve ticket details')
+		}
+
+		// Build response message with parseable format
+		let responseText = `Ticket ${ticketDetails?.ticketNumber || ticketId} created successfully.`
+
+		if (resourceDetails && transferPhone) {
+			responseText += ` Assigned to ${resourceDetails.firstName} ${resourceDetails.lastName}. Transfer phone: ${transferPhone}`
+		} else if (resourceDetails) {
+			responseText += ` Assigned to ${resourceDetails.firstName} ${resourceDetails.lastName}. No transfer phone available.`
+		} else {
+			responseText += ` No technician assigned yet.`
+		}
+
 		return {
 			content: [
 				{
 					type: 'text',
-					text: `Ticket created! Number: ${ticketId}`
+					text: responseText
 				}
 			]
 		}
