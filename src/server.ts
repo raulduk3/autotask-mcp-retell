@@ -283,24 +283,9 @@ app.get('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: Res
 // DELETE endpoint for session termination
 app.delete('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: Response) => {
 	const sessionId = req.headers['mcp-session-id'] as string | undefined
+	const transport = transports[sessionId!]
 
-	if (!sessionId) {
-		logger.warn('DELETE request missing session ID')
-		res.status(400).json({
-			jsonrpc: '2.0',
-			error: {
-				code: -32600,
-				message: 'Bad Request: Missing session ID'
-			},
-			id: null
-		})
-		return
-	}
-
-	const transport = transports[sessionId]
-	if (!transport) {
-		logger.warn({ sessionId }, 'DELETE request with unknown session ID')
-		// Not an error - session may already be closed
+	if (!sessionId || !transport) {
 		res.status(200).send('OK')
 		return
 	}
@@ -309,22 +294,21 @@ app.delete('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: 
 
 	try {
 		await transport.handleRequest(req, res)
-		// Clean up transport after successful DELETE
 		transport.close()
 		delete transports[sessionId]
-		logger.info({ sessionId }, 'Session terminated and cleaned up')
-	} catch (error) {
-		logger.error(
-			{ error, sessionId, stack: error instanceof Error ? error.stack : undefined },
-			'Error handling session termination'
+		delete sessionCreatedAt[sessionId]
+		logger.info(
+			{ sessionId, remainingTransports: Object.keys(transports).length },
+			'Session terminated'
 		)
+	} catch (error) {
+		logger.error({ error, sessionId }, 'Termination error')
 		if (!res.headersSent) {
-			res.status(500).send('Error processing session termination')
+			res.status(500).send('Internal error')
 		}
 	}
 })
 
-// Start server
 const server = app.listen(PORT, () => {
 	logger.info(
 		{
@@ -337,31 +321,19 @@ const server = app.listen(PORT, () => {
 	)
 })
 
-// Handle server shutdown with proper cleanup
 async function shutdown(signal: string) {
-	logger.info({ signal, activeSessions: Object.keys(transports).length }, 'Shutdown signal received')
+	logger.info({ signal, sessions: Object.keys(transports).length }, 'Shutting down')
 
-	// Close all active transports to properly clean up resources
 	for (const sessionId in transports) {
 		try {
-			logger.info({ sessionId }, 'Closing transport')
-			transports[sessionId].close()
-			delete transports[sessionId]
+			await transports[sessionId].close()
 		} catch (error) {
-			logger.error({ error, sessionId }, 'Error closing transport during shutdown')
+			logger.error({ sessionId }, 'Error closing transport')
 		}
 	}
 
-	server.close(() => {
-		logger.info('HTTP server closed, all sessions cleaned up')
-		process.exit(0)
-	})
-
-	// Force close after 10 seconds
-	setTimeout(() => {
-		logger.error('Forced shutdown after timeout')
-		process.exit(1)
-	}, 10000)
+	server.close(() => process.exit(0))
+	setTimeout(() => process.exit(1), 10000)
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'))
