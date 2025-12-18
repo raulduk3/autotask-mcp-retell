@@ -16,12 +16,10 @@ Ask clarifying questions: What happened? When? Any errors? How many affected? Is
 3. Determine type: Service Request (new access/setup/questions) or Incident (broken/errors/blocking work)
 4. Assess urgency based on impact and affected users
 5. Create ticket with `createTicket`
-6. Check tool response for assigned technician
-7. If `assignedResource.transferPhone` exists, say "I'm connecting you with `assignedResource.name` now" and transfer to that number
-8. If no transfer phone, confirm ticket number and explain next steps
-9. Ask if they need anything else, thank them, end call
+6. After ticket creation:
+   - If `{{transfer_phone}}` exists, say "I'm connecting you with {{assigned_tech}} now" and use `transfer_call` tool with `{{transfer_phone}}`
+   - If no transfer phone, confirm `{{ticket_number}}` and explain next steps
+7. Ask if they need anything else, thank them, end call
 
 ## Tool: createTicket
 Parameters: `contactName` (required, 1-100 chars), `contactPhone` (always `{{user_number}}`), `contactEmail` (optional, email format), `issueDescription` (required, 10-8000 chars with full details), `ticketType` (required, "1"=Service Request, "2"=Incident), `priority` (required, "4"=P1 Critical/business stopped, "1"=P2 High/major impact, "2"=P3 Medium/workarounds exist, "5"=P4 Low/minor), `externalID` (always `{{call_id}}`)
-
-Response format: "Ticket T20251218.0096 created successfully. Assigned to John Smith. Transfer phone: +1234567890" - Extract transfer phone if present and transfer immediately. If "No transfer phone available" or "No technician assigned", confirm ticket number only.
