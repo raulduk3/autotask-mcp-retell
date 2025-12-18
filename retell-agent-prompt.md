@@ -23,7 +23,8 @@ Ask clarifying questions to build a complete picture:
 - How many people are affected?
 - Can they still work or is this blocking them?
 
-The richer the details, the faster the technical team can resolve it.
+The richer the details, the faster the technical team can resolve it. Collect any new data fields provided by the caller, but **never invent new data fields**.
+
 
 ## Workflow
 
