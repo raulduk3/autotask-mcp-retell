@@ -132,16 +132,6 @@ app.use((req, res, next) => {
 
 app.use(express.json())
 
-// Health check endpoint (no auth required)
-app.get('/health', (req, res) => {
-	res.json({
-		status: 'ok',
-		timestamp: new Date().toISOString(),
-		activeSessions: Object.keys(transports).length,
-		uptime: process.uptime()
-	})
-})
-
 // Validate request body for JSON-RPC
 function validateRequestBody(req: Request, res: Response, next: () => void): void {
 	if (!req.body?.jsonrpc || req.body.jsonrpc !== '2.0' || !req.body.method) {
@@ -307,6 +297,23 @@ app.delete('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: 
 			res.status(500).send('Internal error')
 		}
 	}
+})
+
+// Catch-all route to deny all other traffic
+app.use((req, res) => {
+	logger.warn(
+		{
+			method: req.method,
+			path: req.path,
+			ip: getClientIP(req)
+		},
+		'Blocked request to unauthorized endpoint'
+	)
+	res.status(404).json({
+		jsonrpc: '2.0',
+		error: { code: -32601, message: 'Not Found' },
+		id: null
+	})
 })
 
 const server = app.listen(PORT, () => {
