@@ -28,8 +28,25 @@ export function createMcpServer(): McpServer {
 			inputSchema: createTicketSchema.inputSchema
 		},
 		async (params) => {
-			logger.info({ params }, 'Tool handler called')
-			return await createTicketHandler(params as any)
+			try {
+				logger.info({ params }, 'Tool handler called')
+				return await createTicketHandler(params as any)
+			} catch (error) {
+				// Ensure any unexpected errors are properly caught and returned
+				logger.error({ error, tool: createTicketSchema.name }, 'Unexpected error in tool handler')
+				return {
+					content: [
+						{
+							type: 'text',
+							text: JSON.stringify({
+								status: 'error',
+								error: error instanceof Error ? error.message : 'Unknown error occurred'
+							})
+						}
+					],
+					isError: true
+				}
+			}
 		}
 	)
 
