@@ -7,6 +7,7 @@ export interface CreateTicketParams {
 	contactPhone?: string
 	contactEmail?: string
 	issueDescription: string
+	preferredContactMethod: 'phone' | 'email'
 	title: string
 	ticketType: '1' | '2'
 	priority: '4' | '1' | '2' | '5'
@@ -81,6 +82,7 @@ export async function createTicket(params: CreateTicketParams): Promise<Autotask
 	const description = `Contact: ${params.contactName}
 ${params.contactPhone ? `Phone: ${params.contactPhone}` : ''}
 ${params.contactEmail ? `Email: ${params.contactEmail}` : ''}
+${params.preferredContactMethod ? `Preferred Contact Method: ${params.preferredContactMethod}` : ''}
 
 ${params.issueDescription}`
 
@@ -91,7 +93,8 @@ ${params.issueDescription}`
 		priority: parseInt(params.priority),
 		status: 1,
 		ticketType: parseInt(params.ticketType),
-		source: 2,
+		preferredContactMethod: params.preferredContactMethod,
+		source: 2, // Phone
 		queueID: config.autotask.queueId,
 		externalID: params.externalID
 	}

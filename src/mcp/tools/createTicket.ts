@@ -8,8 +8,11 @@ export const createTicketSchema = {
 	description: 'Create an Autotask ticket (service request or incident)',
 	inputSchema: z.object({
 		contactName: z.string().describe('Name of the person reporting the issue'),
-		contactPhone: z.string().optional().describe('Phone number of the contact'),
-		contactEmail: z.string().optional().describe('Email of the contact'),
+		contactPhone: z.string().describe('Phone number of the contact'),
+		contactEmail: z.string().describe('Email of the contact'),
+		preferredContactMethod: z
+			.enum(['phone', 'email'])
+			.describe('Preferred method of contact: phone or email'),
 		issueDescription: z.string().describe('Description of the issue or service request'),
 		title: z.string().describe('Title of the issue or service request'),
 		ticketType: z.enum(['1', '2']).describe('1 for Service Request, 2 for Incident'),
@@ -24,7 +27,8 @@ export async function createTicketHandler(params: {
 	contactName: string
 	contactPhone?: string
 	contactEmail?: string
-	issueDescription: string
+	issueDescription: string,
+	preferredContactMethod: 'phone' | 'email'
 	title: string
 	ticketType: '1' | '2'
 	priority: '4' | '1' | '2' | '5'
@@ -89,34 +93,28 @@ export async function createTicketHandler(params: {
 			logger.warn({ error: ticketError, ticketId }, 'Failed to retrieve ticket details')
 		}
 
-		// Build response message with parseable format
-		let responseText = `Ticket ${ticketDetails?.ticketNumber || ticketId} created successfully.`
+		// Build response as stringified JSON object
+		const responseData: Record<string, any> = {
+			status: 'success',
+			ticket_id: ticketId,
+			ticket_number: ticketDetails?.ticketNumber || ticketId
+		}
 
-		if (resourceDetails && transferPhone) {
-			responseText += ` Assigned to ${resourceDetails.firstName} ${resourceDetails.lastName}. Transfer phone: ${transferPhone}`
-		} else if (resourceDetails) {
-			responseText += ` Assigned to ${resourceDetails.firstName} ${resourceDetails.lastName}. No transfer phone available.`
-		} else {
-			responseText += ` No technician assigned yet.`
+		if (resourceDetails) {
+			responseData.assigned_tech = `${resourceDetails.firstName} ${resourceDetails.lastName}`
+		}
+
+		if (transferPhone) {
+			responseData.transfer_phone = transferPhone
 		}
 
 		return {
 			content: [
 				{
 					type: 'text',
-					text: responseText
+					text: JSON.stringify(responseData)
 				}
-			],
-			structuredContent: {
-				success: true,
-				ticketId: ticketId,
-				ticketNumber: ticketDetails?.ticketNumber || null,
-				assignedResourceID: ticketDetails?.assignedResourceID || null,
-				assignedResourceName: resourceDetails
-					? `${resourceDetails.firstName} ${resourceDetails.lastName}`
-					: null,
-				transferPhone: transferPhone || null
-			}
+			]
 		}
 	} catch (error) {
 		logger.error(
@@ -132,13 +130,12 @@ export async function createTicketHandler(params: {
 			content: [
 				{
 					type: 'text',
-					text: `Error creating ticket: ${error instanceof Error ? error.message : String(error)}`
+					text: JSON.stringify({
+						status: 'error',
+						error: error instanceof Error ? error.message : String(error)
+					})
 				}
 			],
-			structuredContent: {
-				success: false,
-				error: error instanceof Error ? error.message : String(error)
-			},
 			isError: true
 		}
 	}
