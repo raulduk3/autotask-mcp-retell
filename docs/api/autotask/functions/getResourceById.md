@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../modules.md) / [api/autotask](../README.md) / getResourceById
+=======
+[Autotask MCP Server](../../../README.md) / [api/autotask](../README.md) / getResourceById
+>>>>>>> Stashed changes
 
 # Function: getResourceById()
 

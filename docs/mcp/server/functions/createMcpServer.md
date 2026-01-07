@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../modules.md) / [mcp/server](../README.md) / createMcpServer
+=======
+[Autotask MCP Server](../../../README.md) / [mcp/server](../README.md) / createMcpServer
+>>>>>>> Stashed changes
 
 # Function: createMcpServer()
 

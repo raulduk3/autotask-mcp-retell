@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../modules.md) / [api/autotask](../README.md) / createTicket
+=======
+[Autotask MCP Server](../../../README.md) / [api/autotask](../README.md) / createTicket
+>>>>>>> Stashed changes
 
 # Function: createTicket()
 

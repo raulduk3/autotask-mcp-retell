@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../modules.md) / mcp/tools/createTicket
+=======
+[Autotask MCP Server](../../../README.md) / mcp/tools/createTicket
+>>>>>>> Stashed changes
 
 # mcp/tools/createTicket
 

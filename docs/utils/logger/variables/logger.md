@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../modules.md) / [utils/logger](../README.md) / logger
+=======
+[Autotask MCP Server](../../../README.md) / [utils/logger](../README.md) / logger
+>>>>>>> Stashed changes
 
 # Variable: logger
 

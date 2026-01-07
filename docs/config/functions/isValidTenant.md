@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../modules.md) / [config](../README.md) / isValidTenant
+=======
+[Autotask MCP Server](../../README.md) / [config](../README.md) / isValidTenant
+>>>>>>> Stashed changes
 
 # Function: isValidTenant()
 

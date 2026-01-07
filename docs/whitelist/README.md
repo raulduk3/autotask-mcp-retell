@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../modules.md) / whitelist
+=======
+[Autotask MCP Server](../README.md) / whitelist
+>>>>>>> Stashed changes
 
 # whitelist
 

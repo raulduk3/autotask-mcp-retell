@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../modules.md) / [whitelist](../README.md) / isWhitelisted
+=======
+[Autotask MCP Server](../../README.md) / [whitelist](../README.md) / isWhitelisted
+>>>>>>> Stashed changes
 
 # Function: isWhitelisted()
 

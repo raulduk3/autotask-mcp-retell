@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../modules.md) / [utils/inMemoryEventStore](../README.md) / InMemoryEventStore
+=======
+[Autotask MCP Server](../../../README.md) / [utils/inMemoryEventStore](../README.md) / InMemoryEventStore
+>>>>>>> Stashed changes
 
 # Class: InMemoryEventStore
 

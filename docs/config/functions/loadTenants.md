@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../modules.md) / [config](../README.md) / loadTenants
+=======
+[Autotask MCP Server](../../README.md) / [config](../README.md) / loadTenants
+>>>>>>> Stashed changes
 
 # Function: loadTenants()
 

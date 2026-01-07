@@ -2,6 +2,10 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../modules.md) / index
+=======
+[Autotask MCP Server](../README.md) / index
+>>>>>>> Stashed changes
 
 # index

@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../modules.md) / [whitelist](../README.md) / getClientIP
+=======
+[Autotask MCP Server](../../README.md) / [whitelist](../README.md) / getClientIP
+>>>>>>> Stashed changes
 
 # Function: getClientIP()
 

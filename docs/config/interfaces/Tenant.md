@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../modules.md) / [config](../README.md) / Tenant
+=======
+[Autotask MCP Server](../../README.md) / [config](../README.md) / Tenant
+>>>>>>> Stashed changes
 
 # Interface: Tenant
 

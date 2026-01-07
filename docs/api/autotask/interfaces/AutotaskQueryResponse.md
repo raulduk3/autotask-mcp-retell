@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../modules.md) / [api/autotask](../README.md) / AutotaskQueryResponse
+=======
+[Autotask MCP Server](../../../README.md) / [api/autotask](../README.md) / AutotaskQueryResponse
+>>>>>>> Stashed changes
 
 # Interface: AutotaskQueryResponse\<T\>
 

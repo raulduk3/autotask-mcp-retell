@@ -2,6 +2,7 @@
 
 ***
 
+<<<<<<< Updated upstream
 # Autotask MCP for Retell
 
 A memory-conscious, stateful Model Context Protocol (MCP) server for creating Autotask tickets via Retell AI voice agents.
@@ -253,3 +254,18 @@ The main MCP endpoint. Accepts JSON-RPC 2.0 requests.
 ## License
 
 See LICENSE file.
+=======
+# Autotask MCP Server v0.1.0
+
+## Modules
+
+- [api/autotask](api/autotask/README.md)
+- [config](config/README.md)
+- [index](index/README.md)
+- [mcp/server](mcp/server/README.md)
+- [mcp/tools/createTicket](mcp/tools/createTicket/README.md)
+- [server](server/README.md)
+- [utils/inMemoryEventStore](utils/inMemoryEventStore/README.md)
+- [utils/logger](utils/logger/README.md)
+- [whitelist](whitelist/README.md)
+>>>>>>> Stashed changes

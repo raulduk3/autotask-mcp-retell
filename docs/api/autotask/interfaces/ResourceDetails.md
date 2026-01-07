@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../modules.md) / [api/autotask](../README.md) / ResourceDetails
+=======
+[Autotask MCP Server](../../../README.md) / [api/autotask](../README.md) / ResourceDetails
+>>>>>>> Stashed changes
 
 # Interface: ResourceDetails
 

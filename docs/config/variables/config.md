@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../modules.md) / [config](../README.md) / config
+=======
+[Autotask MCP Server](../../README.md) / [config](../README.md) / config
+>>>>>>> Stashed changes
 
 # Variable: config
 

@@ -2,7 +2,11 @@
 
 ***
 
+<<<<<<< Updated upstream
 [Autotask MCP Server](../../../../modules.md) / [mcp/tools/createTicket](../README.md) / createTicketSchema
+=======
+[Autotask MCP Server](../../../../README.md) / [mcp/tools/createTicket](../README.md) / createTicketSchema
+>>>>>>> Stashed changes
 
 # Variable: createTicketSchema
 
