@@ -4,18 +4,21 @@
 	"description": "MCP server for Autotask ticket creation via Retell AI",
 	"type": "module",
 	"engines": {
-		"node": ">=18.0.0"
+		"bun": ">=18.0.0"
 	},
 	"scripts": {
 		"build": "tsc",
 		"dev": "tsx src/index.ts",
-		"dev:node": "node --import tsx/esm src/index.ts",
-		"start": "node dist/index.js",
-		"lint": "eslint src --ext .ts",
-		"lint:fix": "eslint src --ext .ts --fix",
+		"dev:bun": "bun --import tsx/esm src/index.ts",
+		"start": "bun dist/index.js",
+		"lint": "eslint src",
+		"lint:fix": "eslint src --fix",
 		"format": "prettier --write \"src/**/*.ts\"",
 		"format:check": "prettier --check \"src/**/*.ts\"",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"docs": "typedoc --options config/typedoc.json",
+		"docs:html": "typedoc --options config/typedoc-html.json",
+		"docs:md": "typedoc --options config/typedoc.json --out docs"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.25.1",
@@ -27,15 +30,19 @@
 		"zod": "^4.2.1"
 	},
 	"devDependencies": {
+		"@eslint/js": "^9.39.2",
+		"@types/bun": "latest",
 		"@types/express": "^5.0.6",
-		"@types/node": "^25.0.2",
 		"@typescript-eslint/eslint-plugin": "^8.50.0",
 		"@typescript-eslint/parser": "^8.50.0",
 		"eslint": "^9.39.2",
 		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-jsdoc": "^61.5.0",
 		"prettier": "^3.7.4",
-		"ts-node": "^10.9.2",
 		"tsx": "^4.21.0",
-		"typescript": "^5.9.3"
+		"typedoc": "^0.28.15",
+		"typedoc-plugin-markdown": "^4.9.0",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.52.0"
 	}
 }

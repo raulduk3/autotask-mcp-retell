@@ -1,8 +1,32 @@
+/**
+ * @fileoverview Autotask REST API client for ticket and resource management.
+ * Provides functions to create tickets, retrieve ticket details, and look up
+ * resource (technician) information for call transfers.
+ * @module api/autotask
+ */
 import https from 'https'
 import { config } from '../config.js'
 import { logger } from '../utils/logger.js'
 
+/**
+ * Parameters for creating a new Autotask ticket.
+ * 
+ * @interface CreateTicketParams
+ * @property {number} companyId - Autotask company ID the ticket belongs to
+ * @property {number} queueId - Queue ID for ticket routing to the appropriate team
+ * @property {string} contactName - Name of the person reporting the issue
+ * @property {string} [contactPhone] - Contact's phone number
+ * @property {string} [contactEmail] - Contact's email address
+ * @property {string} issueDescription - Detailed description of the issue or request
+ * @property {'phone'|'email'} preferredContactMethod - How the contact prefers to be reached
+ * @property {string} title - Brief title/summary for the ticket
+ * @property {'1'|'2'} ticketType - '1' for Service Request, '2' for Incident
+ * @property {'4'|'1'|'2'|'5'} priority - Priority: 4=P1 Critical, 1=P2 High, 2=P3 Medium, 5=P4 Low
+ * @property {string} externalID - External reference ID (e.g., Retell call ID)
+ */
 export interface CreateTicketParams {
+	companyId: number
+	queueId: number
 	contactName: string
 	contactPhone?: string
 	contactEmail?: string
@@ -14,6 +38,14 @@ export interface CreateTicketParams {
 	externalID: string
 }
 
+/**
+ * Response from the Autotask ticket creation API.
+ * 
+ * @interface AutotaskTicketResponse
+ * @property {string} [itemId] - The created ticket's ID (direct property)
+ * @property {Object} [item] - Nested item object containing the ticket
+ * @property {string} [item.id] - The created ticket's ID (nested)
+ */
 export interface AutotaskTicketResponse {
 	itemId?: string
 	item?: {
@@ -21,6 +53,17 @@ export interface AutotaskTicketResponse {
 	}
 }
 
+/**
+ * Detailed ticket information returned from Autotask.
+ * 
+ * @interface TicketDetails
+ * @property {string} id - Unique ticket identifier
+ * @property {string} ticketNumber - Human-readable ticket number (e.g., 'T20240101.0001')
+ * @property {string} [assignedResourceID] - ID of the assigned technician, if any
+ * @property {string} title - Ticket title/summary
+ * @property {number} status - Ticket status code
+ * @property {number} priority - Ticket priority code
+ */
 export interface TicketDetails {
 	id: string
 	ticketNumber: string
@@ -30,6 +73,16 @@ export interface TicketDetails {
 	priority: number
 }
 
+/**
+ * Generic response wrapper for Autotask query endpoints.
+ * 
+ * @interface AutotaskQueryResponse
+ * @template T - The type of items returned
+ * @property {T[]} items - Array of returned items
+ * @property {Object} [pageDetails] - Pagination information
+ * @property {number} [pageDetails.count] - Total count of matching items
+ * @property {number} [pageDetails.requestCount] - Number of items in this response
+ */
 export interface AutotaskQueryResponse<T> {
 	items: T[]
 	pageDetails?: {
@@ -38,6 +91,20 @@ export interface AutotaskQueryResponse<T> {
 	}
 }
 
+/**
+ * Resource (technician/employee) information from Autotask.
+ * Used for call transfer functionality when a ticket is assigned.
+ * 
+ * @interface ResourceDetails
+ * @property {string} id - Unique resource identifier
+ * @property {string} firstName - Resource's first name
+ * @property {string} lastName - Resource's last name
+ * @property {string} [email] - Resource's email address
+ * @property {string} [officePhone] - Office phone number
+ * @property {string} [mobilePhone] - Mobile phone number (preferred for transfers)
+ * @property {string} [homePhone] - Home phone number
+ * @property {string} [officeExtension] - Office phone extension
+ */
 export interface ResourceDetails {
 	id: string
 	firstName: string
@@ -49,11 +116,23 @@ export interface ResourceDetails {
 	officeExtension?: string
 }
 
-// Simple rate limiter for Autotask API calls
+/**
+ * Simple rate limiter to prevent overwhelming the Autotask API.
+ * Enforces a minimum interval between consecutive API calls.
+ * 
+ * @class RateLimiter
+ * @private
+ */
 class RateLimiter {
+	/** Timestamp of the last API call */
 	private lastCallTime = 0
-	private readonly minInterval = 10 // Minimum 10 milliseconds between calls
+	/** Minimum milliseconds between API calls */
+	private readonly minInterval = 10
 
+	/**
+	 * Waits if necessary to respect the rate limit before making an API call.
+	 * @returns {Promise<void>} Resolves when it's safe to make the next call
+	 */
 	async waitForTurn(): Promise<void> {
 		const now = Date.now()
 		const timeSinceLastCall = now - this.lastCallTime
@@ -68,16 +147,47 @@ class RateLimiter {
 	}
 }
 
+/**
+ * Singleton rate limiter instance for all Autotask API calls.
+ * @const {RateLimiter}
+ * @private
+ */
 const rateLimiter = new RateLimiter()
 
 /**
- * Create a ticket in Autotask
+ * Creates a new ticket in Autotask.
+ * 
+ * Constructs the ticket payload with contact information, description,
+ * and routing details, then submits it to the Autotask REST API.
+ * 
+ * @async
+ * @function createTicket
+ * @param {CreateTicketParams} params - Ticket creation parameters
+ * @returns {Promise<AutotaskTicketResponse>} The created ticket response with itemId
+ * @throws {Error} If the API returns an error status or invalid response
+ * 
+ * @example
+ * ```typescript
+ * const result = await createTicket({
+ *   companyId: 12345,
+ *   queueId: 67890,
+ *   contactName: 'John Doe',
+ *   contactPhone: '555-1234',
+ *   issueDescription: 'Cannot print',
+ *   preferredContactMethod: 'phone',
+ *   title: 'Printer Issue',
+ *   ticketType: '2',
+ *   priority: '2',
+ *   externalID: 'retell-abc123'
+ * })
+ * console.log(`Created ticket: ${result.itemId}`)
+ * ```
  */
 export async function createTicket(params: CreateTicketParams): Promise<AutotaskTicketResponse> {
 	// Rate limit API calls
 	await rateLimiter.waitForTurn()
 
-	logger.info({ externalID: params.externalID }, 'Calling Autotask API')
+	logger.info({ externalID: params.externalID, companyId: params.companyId, queueId: params.queueId }, 'Calling Autotask API')
 
 	const description = `Contact: ${params.contactName}
 ${params.contactPhone ? `Phone: ${params.contactPhone}` : ''}
@@ -87,7 +197,7 @@ ${params.preferredContactMethod ? `Preferred Contact Method: ${params.preferredC
 ${params.issueDescription}`
 
 	const ticketPayload = {
-		companyID: config.autotask.companyId,
+		companyID: params.companyId,
 		title: params.title.trim(),
 		description: description.trim(),
 		priority: parseInt(params.priority),
@@ -95,7 +205,7 @@ ${params.issueDescription}`
 		ticketType: parseInt(params.ticketType),
 		preferredContactMethod: params.preferredContactMethod,
 		source: 2, // Phone
-		queueID: config.autotask.queueId,
+		queueID: params.queueId,
 		externalID: params.externalID
 	}
 
@@ -164,7 +274,21 @@ ${params.issueDescription}`
 }
 
 /**
- * Get ticket details by ticket ID
+ * Retrieves detailed ticket information from Autotask by ticket ID.
+ * 
+ * Used to get the ticket number and assigned resource after creation.
+ * 
+ * @async
+ * @function getTicketById
+ * @param {string} ticketId - The Autotask ticket ID to retrieve
+ * @returns {Promise<TicketDetails>} Ticket details including number and assignment
+ * @throws {Error} If the ticket is not found or API returns an error
+ * 
+ * @example
+ * ```typescript
+ * const ticket = await getTicketById('123456')
+ * console.log(`Ticket ${ticket.ticketNumber} assigned to ${ticket.assignedResourceID}`)
+ * ```
  */
 export async function getTicketById(ticketId: string): Promise<TicketDetails> {
 	// Rate limit API calls
@@ -244,7 +368,23 @@ export async function getTicketById(ticketId: string): Promise<TicketDetails> {
 }
 
 /**
- * Get resource details by resource ID
+ * Retrieves resource (technician) details from Autotask by resource ID.
+ * 
+ * Used to get contact information for call transfers when a ticket
+ * is assigned to a specific technician.
+ * 
+ * @async
+ * @function getResourceById
+ * @param {string} resourceId - The Autotask resource ID to retrieve
+ * @returns {Promise<ResourceDetails>} Resource details including phone numbers
+ * @throws {Error} If the resource is not found or API returns an error
+ * 
+ * @example
+ * ```typescript
+ * const resource = await getResourceById('789')
+ * const transferPhone = resource.mobilePhone || resource.officePhone
+ * console.log(`Transfer to ${resource.firstName} at ${transferPhone}`)
+ * ```
  */
 export async function getResourceById(resourceId: string): Promise<ResourceDetails> {
 	// Rate limit API calls

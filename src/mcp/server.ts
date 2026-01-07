@@ -30,7 +30,7 @@ export function createMcpServer(): McpServer {
 		async (params) => {
 			try {
 				logger.info({ params }, 'Tool handler called')
-				return await createTicketHandler(params as any)
+				return await createTicketHandler(params as Parameters<typeof createTicketHandler>[0])
 			} catch (error) {
 				// Ensure any unexpected errors are properly caught and returned
 				logger.error({ error, tool: createTicketSchema.name }, 'Unexpected error in tool handler')

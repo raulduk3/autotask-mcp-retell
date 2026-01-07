@@ -1,6 +1,17 @@
+/**
+ * @fileoverview Main MCP HTTP server with session management, authentication, and SSE streaming.
+ * 
+ * This server implements the Model Context Protocol (MCP) over HTTP with:
+ * - Streamable HTTP transport with Server-Sent Events (SSE)
+ * - Session-based state management with automatic cleanup
+ * - IP whitelist and Bearer token authentication
+ * - Health monitoring and memory reporting
+ * 
+ * @module server
+ */
 import { Request, Response } from 'express'
 import express from 'express'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { InMemoryEventStore } from './utils/inMemoryEventStore.js'
 import { createMcpServer } from './mcp/server.js'
@@ -9,19 +20,66 @@ import { config } from './config.js'
 import { logger } from './utils/logger.js'
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 
+/**
+ * HTTP server port from configuration.
+ * @const {number}
+ */
 const PORT = config.port
+
+/**
+ * Bearer token for MCP endpoint authentication.
+ * Empty string disables authentication.
+ * @const {string}
+ */
 const AUTH_SECRET = config.auth.secret
+
+/**
+ * Loaded IP whitelist from .whitelist file.
+ * Empty array disables IP filtering.
+ * @const {string[]}
+ */
 const IP_WHITELIST = loadWhitelist()
 
-// Create singleton MCP server instance (reused across all sessions)
+/**
+ * Singleton MCP server instance shared across all sessions.
+ * Reusing a single instance reduces memory overhead.
+ * @const {McpServer}
+ */
 const mcpServer = createMcpServer()
 logger.info('MCP server instance created')
 
+/**
+ * Active session transports keyed by session ID.
+ * Each session has its own StreamableHTTPServerTransport for SSE streaming.
+ * @type {Object.<string, StreamableHTTPServerTransport>}
+ */
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
+
+/**
+ * Session creation timestamps for TTL enforcement.
+ * @type {Object.<string, number>}
+ */
 const sessionCreatedAt: { [sessionId: string]: number } = {}
+
+/**
+ * Session timeout in milliseconds (15 minutes).
+ * Sessions inactive longer than this are automatically cleaned up.
+ * @const {number}
+ */
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000
 
-// Cleanup inactive sessions periodically
+/**
+ * Maximum concurrent sessions allowed.
+ * Returns 503 when limit is reached to prevent memory exhaustion.
+ * @const {number}
+ */
+const MAX_SESSIONS = 100
+
+/**
+ * Periodic cleanup of expired sessions.
+ * Runs every 60 seconds to remove sessions older than SESSION_TIMEOUT_MS.
+ * Closes transports gracefully before removal.
+ */
 setInterval(() => {
 	const now = Date.now()
 	const sessionsToRemove: string[] = []
@@ -51,9 +109,15 @@ setInterval(() => {
 			delete sessionCreatedAt[sessionId]
 		}
 	}
-}, 60 * 1000) // Check every minute
+}, 60 * 1000)
 
-// Monitor server health and report periodically
+/**
+ * Periodic health monitoring and reporting.
+ * Runs every 2 minutes to log server status including:
+ * - Active session count and ages
+ * - Memory usage (heap, RSS, external)
+ * - Server uptime
+ */
 setInterval(() => {
 	const memUsage = process.memoryUsage()
 	const now = Date.now()
@@ -81,9 +145,20 @@ setInterval(() => {
 		},
 		'Server health report'
 	)
-}, 2 * 60 * 1000) // Report every 2 minutes
+}, 2 * 60 * 1000)
 
-// Middleware to validate IP whitelist
+/**
+ * Express middleware to validate client IP against the whitelist.
+ * 
+ * If the whitelist is non-empty, requests from non-whitelisted IPs
+ * receive a 403 Forbidden response. Supports proxy headers.
+ * 
+ * @function validateIPWhitelist
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @param {Function} next - Next middleware function
+ * @returns {void}
+ */
 function validateIPWhitelist(req: Request, res: Response, next: () => void): void {
 	const clientIP = getClientIP(req)
 
@@ -101,22 +176,46 @@ function validateIPWhitelist(req: Request, res: Response, next: () => void): voi
 	next()
 }
 
-// Middleware to validate auth header
+/**
+ * Express middleware to validate Bearer token authentication.
+ * 
+ * Uses timing-safe comparison to prevent timing attacks.
+ * If AUTH_SECRET is empty, authentication is disabled.
+ * 
+ * @function validateAuth
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @param {Function} next - Next middleware function
+ * @returns {void}
+ */
 function validateAuth(req: Request, res: Response, next: () => void): void {
-	if (AUTH_SECRET && req.headers['authorization'] !== AUTH_SECRET) {
-		res.status(401).json({
-			jsonrpc: '2.0',
-			error: { code: -32000, message: 'Unauthorized' },
-			id: null
-		})
-		return
+	if (AUTH_SECRET) {
+		const provided = req.headers['authorization'] || ''
+		const providedBuffer = Buffer.from(String(provided))
+		const secretBuffer = Buffer.from(AUTH_SECRET)
+		
+		if (providedBuffer.length !== secretBuffer.length || !timingSafeEqual(providedBuffer, secretBuffer)) {
+			res.status(401).json({
+				jsonrpc: '2.0',
+				error: { code: -32000, message: 'Unauthorized' },
+				id: null
+			})
+			return
+		}
 	}
 	next()
 }
 
+/**
+ * Express application instance.
+ * @const {express.Application}
+ */
 const app = express()
 
-// Log all incoming requests for debugging
+/**
+ * Request logging middleware.
+ * Logs all incoming requests with method, path, session ID, and auth status.
+ */
 app.use((req, res, next) => {
 	logger.info(
 		{
@@ -130,9 +229,18 @@ app.use((req, res, next) => {
 	next()
 })
 
-app.use(express.json())
+app.use(express.json({ limit: '50kb' }))
 
-// Validate request body for JSON-RPC
+/**
+ * Validates incoming JSON-RPC request body structure.
+ * Ensures requests have valid JSON-RPC 2.0 format with method field.
+ * 
+ * @function validateRequestBody
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ * @param {Function} next - Next middleware function
+ * @returns {void}
+ */
 function validateRequestBody(req: Request, res: Response, next: () => void): void {
 	if (!req.body?.jsonrpc || req.body.jsonrpc !== '2.0' || !req.body.method) {
 		res.status(400).json({
@@ -145,7 +253,19 @@ function validateRequestBody(req: Request, res: Response, next: () => void): voi
 	next()
 }
 
-// MCP POST endpoint
+/**
+ * POST /mcp - Main MCP endpoint for JSON-RPC requests.
+ * 
+ * Handles:
+ * - Session initialization (creates new transport)
+ * - Tool calls and other MCP methods (uses existing transport)
+ * 
+ * Headers:
+ * - `mcp-session-id`: Session identifier (required after initialization)
+ * - `Authorization`: Bearer token (if AUTH_SECRET is set)
+ * 
+ * @route POST /mcp
+ */
 app.post('/mcp', validateIPWhitelist, validateAuth, validateRequestBody, async (req: Request, res: Response) => {
 	const sessionIdHeader = req.headers['mcp-session-id'] as string | undefined
 
@@ -160,6 +280,17 @@ app.post('/mcp', validateIPWhitelist, validateAuth, validateRequestBody, async (
 
 	try {
 		if (isInitializeRequest(req.body)) {
+			// Check max sessions before creating new one
+			if (Object.keys(transports).length >= MAX_SESSIONS) {
+				logger.warn({ activeSessions: Object.keys(transports).length }, 'Max sessions reached')
+				res.status(503).json({
+					jsonrpc: '2.0',
+					error: { code: -32000, message: 'Server busy, try again later' },
+					id: null
+				})
+				return
+			}
+
 			logger.info('Initializing new session')
 
 			const transport = new StreamableHTTPServerTransport({
@@ -231,7 +362,18 @@ app.post('/mcp', validateIPWhitelist, validateAuth, validateRequestBody, async (
 	}
 })
 
-// GET endpoint for SSE streaming
+/**
+ * GET /mcp - Server-Sent Events (SSE) streaming endpoint.
+ * 
+ * Establishes a persistent SSE connection for receiving server-initiated
+ * messages. Supports reconnection via Last-Event-ID header.
+ * 
+ * Headers:
+ * - `mcp-session-id`: Session identifier (required)
+ * - `last-event-id`: For SSE reconnection (optional)
+ * 
+ * @route GET /mcp
+ */
 app.get('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: Response) => {
 	const sessionId = req.headers['mcp-session-id'] as string | undefined
 
@@ -262,6 +404,8 @@ app.get('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: Res
 
 	try {
 		await transports[sessionId].handleRequest(req, res)
+		// Refresh session on SSE activity
+		sessionCreatedAt[sessionId] = Date.now()
 	} catch (error) {
 		logger.error({ error, sessionId }, 'SSE error')
 		if (!res.headersSent) {
@@ -270,7 +414,17 @@ app.get('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: Res
 	}
 })
 
-// DELETE endpoint for session termination
+/**
+ * DELETE /mcp - Session termination endpoint.
+ * 
+ * Gracefully closes the session transport and removes it from memory.
+ * Returns 200 OK even if session doesn't exist (idempotent).
+ * 
+ * Headers:
+ * - `mcp-session-id`: Session identifier to terminate
+ * 
+ * @route DELETE /mcp
+ */
 app.delete('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: Response) => {
 	const sessionId = req.headers['mcp-session-id'] as string | undefined
 	const transport = transports[sessionId!]
@@ -299,7 +453,35 @@ app.delete('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: 
 	}
 })
 
-// Catch-all route to deny all other traffic
+/**
+ * GET /health - Health check endpoint.
+ * 
+ * Returns server status including:
+ * - Active session count
+ * - Memory usage
+ * - Uptime
+ * 
+ * @route GET /health
+ * @returns {Object} Health status JSON
+ */
+app.get('/health', (req: Request, res: Response) => {
+	const memUsage = process.memoryUsage()
+	res.json({
+		status: 'ok',
+		sessions: Object.keys(transports).length,
+		maxSessions: MAX_SESSIONS,
+		uptime: Math.floor(process.uptime()),
+		memory: {
+			heapUsedMB: Math.round(memUsage.heapUsed / 1024 / 1024),
+			heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024)
+		}
+	})
+})
+
+/**
+ * Catch-all route for unauthorized endpoints.
+ * Returns 404 for any path not explicitly defined.
+ */
 app.use((req, res) => {
 	logger.warn(
 		{
@@ -316,6 +498,10 @@ app.use((req, res) => {
 	})
 })
 
+/**
+ * HTTP server instance.
+ * @const {http.Server}
+ */
 const server = app.listen(PORT, () => {
 	logger.info(
 		{
@@ -328,13 +514,24 @@ const server = app.listen(PORT, () => {
 	)
 })
 
+/**
+ * Graceful shutdown handler.
+ * 
+ * Closes all active session transports and waits for the HTTP server
+ * to finish handling pending requests before exiting.
+ * 
+ * @async
+ * @function shutdown
+ * @param {string} signal - The signal that triggered shutdown (SIGINT or SIGTERM)
+ * @returns {Promise<void>}
+ */
 async function shutdown(signal: string) {
 	logger.info({ signal, sessions: Object.keys(transports).length }, 'Shutting down')
 
 	for (const sessionId in transports) {
 		try {
 			await transports[sessionId].close()
-		} catch (error) {
+		} catch {
 			logger.error({ sessionId }, 'Error closing transport')
 		}
 	}

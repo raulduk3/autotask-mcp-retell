@@ -92,5 +92,5 @@ export function getClientIP(req: Request): string {
 	}
 
 	// Fallback to socket IP
-	return req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown'
+	return req.ip || req.socket?.remoteAddress || 'unknown'
 }

@@ -114,16 +114,32 @@ Example `.whitelist`:
 ## Project Structure
 
 ```
-src/
-├── server.ts                    # Main Express server with MCP endpoint
-├── whitelist.ts                 # IP whitelist management module
-├── mcp/
-│   ├── server.ts               # MCP server initialization
-│   └── tools/
-│       └── createTicket.ts     # Tool definitions and handlers
-└── api/
-    └── autotask.ts             # Autotask API client
-.whitelist                       # IP whitelist (not committed to git)
+├── src/                         # Source code
+│   ├── index.ts                # Application entry point
+│   ├── server.ts               # Express server with MCP endpoint
+│   ├── config.ts               # Configuration management
+│   ├── whitelist.ts            # IP whitelist management
+│   ├── api/
+│   │   └── autotask.ts         # Autotask API client
+│   ├── mcp/
+│   │   ├── server.ts           # MCP server initialization
+│   │   └── tools/
+│   │       └── createTicket.ts # Tool definitions and handlers
+│   └── utils/
+│       ├── logger.ts           # Logging utilities
+│       └── inMemoryEventStore.ts
+├── config/                      # Documentation tool configs
+│   ├── typedoc.json            # TypeDoc markdown config
+│   └── typedoc-html.json       # TypeDoc HTML config
+├── scripts/                     # Build/generation scripts
+│   └── generate-agent.ts
+├── docs/                        # Generated markdown docs
+├── docs-html/                   # Generated HTML docs
+├── .env.example                 # Environment template
+├── .whitelist.example           # IP whitelist template
+├── eslint.config.js            # ESLint configuration
+├── .prettierrc.json            # Prettier configuration
+└── tsconfig.json               # TypeScript configuration
 ```
 
 ## Adding New Tools

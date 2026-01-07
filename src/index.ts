@@ -4,7 +4,10 @@
 
 // Suppress specific Node.js warnings before any imports
 const originalEmitWarning = process.emitWarning
-process.emitWarning = function (warning: string | Error, ...args: any[]) {
+
+// Override emitWarning to suppress known deprecation warnings from dependencies
+// Using type assertion due to complex function overloads
+process.emitWarning = ((warning: string | Error, ...rest: unknown[]): void => {
 	const warningStr = typeof warning === 'string' ? warning : warning.message || ''
 	
 	// Suppress fs.Stats constructor deprecation (from pino-pretty dependency)
@@ -13,8 +16,8 @@ process.emitWarning = function (warning: string | Error, ...args: any[]) {
 	}
 	
 	// Call original emitWarning for all other warnings
-	return originalEmitWarning.call(this, warning, ...args)
-}
+	originalEmitWarning(warning, ...(rest as []))
+}) as typeof process.emitWarning
 
 // Now import and start the server
 import './server.js'

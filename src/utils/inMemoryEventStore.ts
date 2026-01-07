@@ -1,6 +1,8 @@
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import { EventStore } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 
+const MAX_EVENTS_PER_STREAM = 100
+
 /**
  * Simple in-memory implementation of the EventStore interface for resumability
  * This is primarily intended for examples and testing, not for production use
@@ -11,6 +13,7 @@ import { EventStore } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
  */
 export class InMemoryEventStore implements EventStore {
 	private events: Map<string, { streamId: string; message: JSONRPCMessage }> = new Map()
+	private streamEventCounts: Map<string, number> = new Map()
 
 	/**
 	 * Generates a unique event ID for a given stream ID
@@ -34,6 +37,16 @@ export class InMemoryEventStore implements EventStore {
 	async storeEvent(streamId: string, message: JSONRPCMessage): Promise<string> {
 		const eventId = this.generateEventId(streamId)
 		this.events.set(eventId, { streamId, message })
+		
+		// Track event count per stream and enforce limit
+		const count = (this.streamEventCounts.get(streamId) || 0) + 1
+		this.streamEventCounts.set(streamId, count)
+		
+		// Prune oldest events if stream exceeds limit
+		if (count > MAX_EVENTS_PER_STREAM) {
+			this.pruneOldestEventsForStream(streamId, count - MAX_EVENTS_PER_STREAM)
+		}
+		
 		return eventId
 	}
 
@@ -77,5 +90,48 @@ export class InMemoryEventStore implements EventStore {
 			}
 		}
 		return streamId
+	}
+
+	/**
+	 * Clear all events for a specific stream (session cleanup)
+	 */
+	clearEventsForStream(streamId: string): void {
+		const toDelete: string[] = []
+		for (const [eventId, { streamId: eventStreamId }] of this.events) {
+			if (eventStreamId === streamId) {
+				toDelete.push(eventId)
+			}
+		}
+		for (const eventId of toDelete) {
+			this.events.delete(eventId)
+		}
+		this.streamEventCounts.delete(streamId)
+	}
+
+	/**
+	 * Prune oldest events for a stream
+	 */
+	private pruneOldestEventsForStream(streamId: string, count: number): void {
+		const streamEvents = [...this.events.entries()]
+			.filter(([, { streamId: sid }]) => sid === streamId)
+			.sort((a, b) => a[0].localeCompare(b[0]))
+		
+		for (let i = 0; i < count && i < streamEvents.length; i++) {
+			this.events.delete(streamEvents[i][0])
+		}
+	}
+
+	/**
+	 * Get total event count (for health reporting)
+	 */
+	getEventCount(): number {
+		return this.events.size
+	}
+
+	/**
+	 * Get stream count (for health reporting)
+	 */
+	getStreamCount(): number {
+		return this.streamEventCounts.size
 	}
 }

@@ -1,16 +1,40 @@
 #!/usr/bin/env node
 /**
- * Generate a new Retell agent configuration for a company
+ * @fileoverview CLI tool to generate Retell AI agent configurations for new tenants.
  * 
- * Usage:
- *   bun scripts/generate-agent.ts --company "Acme Corp" --companyId 12345 --queueId 67890
- *   bun scripts/generate-agent.ts --interactive
+ * This script creates a customized agent JSON file by:
+ * 1. Reading the agent template and prompt files
+ * 2. Substituting company-specific placeholders
+ * 3. Injecting MCP server connection details from .env
+ * 4. Saving the output to agents/<company-slug>-agent.json
+ * 5. Updating .tenants.json with the new tenant
+ * 
+ * @example
+ * ```bash
+ * # Interactive mode
+ * bun scripts/generate-agent.ts --interactive
+ * 
+ * # Command-line arguments
+ * bun scripts/generate-agent.ts --company "Acme Corp" --companyId 12345 --queueId 67890
+ * ```
+ * 
+ * @module scripts/generate-agent
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { createInterface } from 'readline'
 
+/**
+ * Configuration for generating a Retell agent.
+ * Contains all company-specific information needed for the agent template.
+ * 
+ * @interface AgentConfig
+ * @property {string} agentName - Full agent name (e.g., "Acme Corp HelpDesk Agent")
+ * @property {string} companyName - Company/tenant name
+ * @property {string} companyId - Autotask company ID as string
+ * @property {string} queueId - Autotask queue ID as string for ticket routing
+ */
 interface AgentConfig {
 	agentName: string
 	companyName: string
@@ -18,17 +42,54 @@ interface AgentConfig {
 	queueId: string
 }
 
+/**
+ * Environment configuration loaded from .env file.
+ * Contains MCP server connection details for the agent.
+ * 
+ * @interface EnvConfig
+ * @property {string} mcpServerUrl - Full URL to the MCP server endpoint
+ * @property {string} mcpAuthSecret - Bearer token for MCP authentication
+ * @property {string} mcpId - Static MCP identifier
+ */
 interface EnvConfig {
 	mcpServerUrl: string
 	mcpAuthSecret: string
 	mcpId: string
 }
 
+/**
+ * Path to the agent template JSON file.
+ * @const {string}
+ */
 const TEMPLATE_PATH = join(process.cwd(), 'agent-template.json')
+
+/**
+ * Path to the agent system prompt markdown file.
+ * @const {string}
+ */
 const PROMPT_PATH = join(process.cwd(), 'retell-agent-prompt.md')
+
+/**
+ * Output directory for generated agent configurations.
+ * @const {string}
+ */
 const OUTPUT_DIR = join(process.cwd(), 'agents')
+
+/**
+ * Path to the environment file for MCP configuration.
+ * @const {string}
+ */
 const ENV_PATH = join(process.cwd(), '.env')
 
+/**
+ * Loads MCP configuration from the .env file.
+ * 
+ * Parses environment variables for MCP server URL, auth secret, and ID.
+ * Uses sensible defaults when values are not found.
+ * 
+ * @function loadEnvConfig
+ * @returns {EnvConfig} Parsed environment configuration
+ */
 function loadEnvConfig(): EnvConfig {
 	let mcpAuthSecret = ''
 	let mcpServerUrl = ''
@@ -60,6 +121,19 @@ function loadEnvConfig(): EnvConfig {
 	}
 }
 
+/**
+ * Converts a string to a URL-safe slug.
+ * 
+ * Transforms company names into lowercase, hyphen-separated identifiers
+ * suitable for filenames and URLs.
+ * 
+ * @function slugify
+ * @param {string} text - Input text to slugify
+ * @returns {string} URL-safe slug
+ * 
+ * @example
+ * slugify('Acme Corp Inc.') // Returns 'acme-corp-inc'
+ */
 function slugify(text: string): string {
 	return text
 		.toLowerCase()
@@ -67,6 +141,28 @@ function slugify(text: string): string {
 		.replace(/^-|-$/g, '')
 }
 
+/**
+ * Generates a Retell agent configuration from template.
+ * 
+ * Reads the template and prompt files, then substitutes all
+ * placeholder values with company-specific and environment configuration.
+ * 
+ * Placeholders replaced:
+ * - `__AGENT_NAME__` - Full agent name
+ * - `__COMPANY_NAME__` - Company name
+ * - `__COMPANY_ID__` - Autotask company ID
+ * - `__QUEUE_ID__` - Autotask queue ID
+ * - `__MCP_SERVER_URL__` - MCP endpoint URL
+ * - `__MCP_AUTH_SECRET__` - MCP authentication token
+ * - `__MCP_ID__` - MCP identifier
+ * - `__AGENT_PROMPT__` - Escaped prompt content
+ * 
+ * @function generateAgent
+ * @param {AgentConfig} config - Agent configuration with company details
+ * @param {EnvConfig} envConfig - Environment configuration with MCP settings
+ * @returns {string} Generated agent JSON as string
+ * @throws {Error} Exits process if template or prompt files are missing
+ */
 function generateAgent(config: AgentConfig, envConfig: EnvConfig): string {
 	if (!existsSync(TEMPLATE_PATH)) {
 		console.error(`Error: Template not found at ${TEMPLATE_PATH}`)
@@ -103,6 +199,17 @@ function generateAgent(config: AgentConfig, envConfig: EnvConfig): string {
 	return output
 }
 
+/**
+ * Saves the generated agent configuration to the output directory.
+ * 
+ * Creates the output directory if it doesn't exist, then writes
+ * the agent JSON to a file named after the slugified company name.
+ * 
+ * @function saveAgent
+ * @param {AgentConfig} config - Agent configuration (used for filename)
+ * @param {string} content - Generated JSON content to save
+ * @returns {string} Absolute path to the saved file
+ */
 function saveAgent(config: AgentConfig, content: string): string {
 	if (!existsSync(OUTPUT_DIR)) {
 		mkdirSync(OUTPUT_DIR, { recursive: true })
@@ -115,6 +222,17 @@ function saveAgent(config: AgentConfig, content: string): string {
 	return filepath
 }
 
+/**
+ * Adds or updates a tenant in the .tenants.json file.
+ * 
+ * The tenants file is used by the MCP server to validate incoming
+ * requests and route tickets to the correct Autotask queue.
+ * 
+ * @function addToTenants
+ * @param {string} companyId - Autotask company ID
+ * @param {string} queueId - Autotask queue ID
+ * @param {string} companyName - Human-readable company name
+ */
 function addToTenants(companyId: string, queueId: string, companyName: string): void {
 	const tenantsPath = join(process.cwd(), '.tenants.json')
 	
@@ -146,6 +264,14 @@ function addToTenants(companyId: string, queueId: string, companyName: string): 
 	console.log(`✅ Updated .tenants.json with ${companyName}`)
 }
 
+/**
+ * Prompts the user for input via readline.
+ * 
+ * @async
+ * @function prompt
+ * @param {string} question - Question to display to the user
+ * @returns {Promise<string>} User's trimmed input
+ */
 async function prompt(question: string): Promise<string> {
 	const rl = createInterface({
 		input: process.stdin,
@@ -160,6 +286,13 @@ async function prompt(question: string): Promise<string> {
 	})
 }
 
+/**
+ * Runs the interactive mode, prompting user for all required values.
+ * 
+ * @async
+ * @function interactiveMode
+ * @returns {Promise<AgentConfig>} Collected agent configuration
+ */
 async function interactiveMode(): Promise<AgentConfig> {
 	console.log('\n🤖 Retell Agent Generator\n')
 	console.log('Generate a new agent configuration for a company.\n')
@@ -168,7 +301,7 @@ async function interactiveMode(): Promise<AgentConfig> {
 	const companyId = await prompt('Autotask Company ID: ')
 	const queueId = await prompt('Autotask Queue ID: ')
 	
-	const agentName = `${companyName} HelpDesk Agent`
+	const agentName = `${companyName} Help Desk Ticket Agent`
 	
 	return {
 		agentName,
@@ -178,6 +311,20 @@ async function interactiveMode(): Promise<AgentConfig> {
 	}
 }
 
+/**
+ * Parses command-line arguments.
+ * 
+ * Supports flags:
+ * - `--interactive`, `-i`: Use interactive mode
+ * - `--help`, `-h`: Show usage information
+ * - `--company <name>`: Company name
+ * - `--companyId <id>`: Autotask company ID
+ * - `--queueId <id>`: Autotask queue ID
+ * 
+ * @function parseArgs
+ * @returns {AgentConfig | null} Parsed config, or null to signal interactive mode
+ * @throws {Error} Exits process if required args are missing (non-interactive)
+ */
 function parseArgs(): AgentConfig | null {
 	const args = process.argv.slice(2)
 	
@@ -234,6 +381,19 @@ Output:
 	}
 }
 
+/**
+ * Main entry point for the agent generator CLI.
+ * 
+ * Orchestrates the generation process:
+ * 1. Parses arguments or runs interactive mode
+ * 2. Loads environment configuration
+ * 3. Generates and saves the agent file
+ * 4. Updates the tenants registry
+ * 
+ * @async
+ * @function main
+ * @returns {Promise<void>}
+ */
 async function main() {
 	let config = parseArgs()
 	

@@ -1,0 +1,15 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"entryPoints": ["../src/index.ts", "../src/server.ts", "../src/config.ts", "../src/whitelist.ts", "../src/api/autotask.ts", "../src/mcp/server.ts", "../src/mcp/tools/createTicket.ts", "../src/utils/logger.ts", "../src/utils/inMemoryEventStore.ts"],
+	"out": "../docs-html",
+	"name": "Autotask MCP Server",
+	"readme": "../README.md",
+	"includeVersion": true,
+	"excludePrivate": false,
+	"excludeInternal": false,
+	"githubPages": false,
+	"categorizeByGroup": true,
+	"navigationLinks": {
+		"GitHub": "https://github.com/raulduk3/autotask-mcp-retell"
+	}
+}
