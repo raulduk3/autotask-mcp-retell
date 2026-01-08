@@ -18,12 +18,8 @@
 		"typecheck": "tsc --noEmit",
 		"docs": "typedoc --options config/typedoc.json",
 		"docs:html": "typedoc --options config/typedoc-html.json",
-<<<<<<< Updated upstream
-		"docs:md": "typedoc --options config/typedoc.json --out docs"
-=======
 		"docs:md": "typedoc --options config/typedoc.json --out docs",
 		"generate:agent": "bun scripts/generate-agent.ts"
->>>>>>> Stashed changes
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.25.1",
