@@ -86,9 +86,9 @@
 				"name": "createTicket",
 				"description": "Create an Autotask ticket (service request or incident). Requires companyId from lookupCompanyContact. Input: companyId, contactId, isNewContact, contactName, contactPhone, contactEmail, preferredContactMethod, issueDescription, title, ticketType (1=Service Request, 2=Incident), priority (4=P1, 1=P2, 2=P3, 5=P4), externalID.",
 				"response_variables": {
-					"assigned_tech": "assigned_tech",
-					"ticket_number": "ticket_number",
-					"transfer_phone": "transfer_phone"
+					"assigned_tech": "assignedTech",
+					"ticket_number": "ticketNumber",
+					"transfer_phone": "transferPhone"
 				},
 				"mcp_id": "__MCP_ID__",
 				"type": "mcp",
@@ -98,12 +98,12 @@
 				"execution_message_description": "Looking up your ticket now.",
 				"speak_after_execution": false,
 				"name": "getTicket",
-				"description": "Retrieve details of an existing Autotask ticket. Input: ticketId. Returns ticket_number, title, ticket_status, priority, assigned_tech, transfer_phone.",
+				"description": "Retrieve details of an existing Autotask ticket. Input: ticketId. Returns ticketNumber, title, ticketStatus, priority, assignedTech, transferPhone.",
 				"response_variables": {
-					"ticket_number": "ticket_number",
-					"assigned_tech": "assigned_tech",
-					"transfer_phone": "transfer_phone",
-					"ticket_status": "ticket_status"
+					"ticket_number": "ticketNumber",
+					"assigned_tech": "assignedTech",
+					"transfer_phone": "transferPhone",
+					"ticket_status": "ticketStatus"
 				},
 				"mcp_id": "__MCP_ID__",
 				"type": "mcp",

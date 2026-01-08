@@ -88,10 +88,10 @@ export async function getTicketHandler(params: {
 
 		const responseData: Record<string, unknown> = {
 			status: 'success',
-			ticket_id: ticketDetails.id,
-			ticket_number: ticketDetails.ticketNumber,
+			ticketId: ticketDetails.id,
+			ticketNumber: ticketDetails.ticketNumber,
 			title: ticketDetails.title,
-			ticket_status: ticketDetails.status,
+			ticketStatus: ticketDetails.status,
 			priority: ticketDetails.priority
 		}
 
@@ -101,10 +101,10 @@ export async function getTicketHandler(params: {
 				const resourceDetails = await getResourceById(ticketDetails.assignedResourceID)
 				const transferPhone = resourceDetails.mobilePhone || resourceDetails.officePhone
 
-				responseData.assigned_tech = `${resourceDetails.firstName} ${resourceDetails.lastName}`
+				responseData.assignedTech = `${resourceDetails.firstName} ${resourceDetails.lastName}`
 
 				if (transferPhone) {
-					responseData.transfer_phone = transferPhone
+					responseData.transferPhone = transferPhone
 				}
 
 				logger.info(

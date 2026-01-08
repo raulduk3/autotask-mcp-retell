@@ -194,16 +194,16 @@ export async function createTicketHandler(params: {
 		// Build response as stringified JSON object
 		const responseData: Record<string, unknown> = {
 			status: 'success',
-			ticket_id: ticketId,
-			ticket_number: ticketDetails?.ticketNumber || ticketId
+			ticketId: ticketId,
+			ticketNumber: ticketDetails?.ticketNumber || ticketId
 		}
 
 		if (resourceDetails) {
-			responseData.assigned_tech = `${resourceDetails.firstName} ${resourceDetails.lastName}`
+			responseData.assignedTech = `${resourceDetails.firstName} ${resourceDetails.lastName}`
 		}
 
 		if (transferPhone) {
-			responseData.transfer_phone = transferPhone
+			responseData.transferPhone = transferPhone
 		}
 
 		return {
