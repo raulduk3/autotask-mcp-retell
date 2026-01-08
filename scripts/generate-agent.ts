@@ -73,13 +73,13 @@ const PROMPT_PATH = join(process.cwd(), 'retell-agent-prompt.md')
  * Output directory for generated agent configurations.
  * @const {string}
  */
-const OUTPUT_DIR = join(process.cwd(), 'agents')
+const OUTPUT_DIR = join(process.cwd(), 'scripts', 'agents')
 
 /**
  * Path to the environment file for MCP configuration.
  * @const {string}
  */
-const ENV_PATH = join(process.cwd(), '.env')
+const ENV_PATH = join(process.cwd(), '.env.development')
 
 /**
  * Loads MCP configuration from the .env file.
@@ -95,22 +95,27 @@ function loadEnvConfig(): EnvConfig {
 	let mcpServerUrl = ''
 	let mcpId = 'mcp-autotask'
 	
+	// Helper to strip surrounding quotes from env values
+	const stripQuotes = (value: string): string => {
+		return value.trim().replace(/^["']|["']$/g, '')
+	}
+	
 	if (existsSync(ENV_PATH)) {
 		const envContent = readFileSync(ENV_PATH, 'utf8')
 		
 		const secretMatch = envContent.match(/^MCP_AUTH_SECRET=(.+)$/m)
 		if (secretMatch) {
-			mcpAuthSecret = secretMatch[1].trim()
+			mcpAuthSecret = stripQuotes(secretMatch[1])
 		}
 		
 		const urlMatch = envContent.match(/^MCP_SERVER_URL=(.+)$/m)
 		if (urlMatch) {
-			mcpServerUrl = urlMatch[1].trim()
+			mcpServerUrl = stripQuotes(urlMatch[1])
 		}
 		
 		const idMatch = envContent.match(/^MCP_ID=(.+)$/m)
 		if (idMatch) {
-			mcpId = idMatch[1].trim()
+			mcpId = stripQuotes(idMatch[1])
 		}
 	}
 	
@@ -175,7 +180,11 @@ function generateAgent(config: AgentConfig, envConfig: EnvConfig): string {
 	}
 	
 	const templateContent = readFileSync(TEMPLATE_PATH, 'utf8')
-	const promptContent = readFileSync(PROMPT_PATH, 'utf8')
+	let promptContent = readFileSync(PROMPT_PATH, 'utf8')
+	
+	// Replace placeholders in prompt content BEFORE escaping
+	promptContent = promptContent
+		.replace(/__COMPANY_NAME__/g, config.companyName)
 	
 	// Escape the prompt for JSON embedding (handle newlines, quotes, backslashes)
 	const escapedPrompt = promptContent
