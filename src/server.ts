@@ -181,6 +181,7 @@ function validateIPWhitelist(req: Request, res: Response, next: () => void): voi
  * 
  * Uses timing-safe comparison to prevent timing attacks.
  * If AUTH_SECRET is empty, authentication is disabled.
+ * Accepts both "Bearer TOKEN" and raw "TOKEN" formats for flexibility.
  * 
  * @function validateAuth
  * @param {Request} req - Express request object
@@ -190,8 +191,12 @@ function validateIPWhitelist(req: Request, res: Response, next: () => void): voi
  */
 function validateAuth(req: Request, res: Response, next: () => void): void {
 	if (AUTH_SECRET) {
-		const provided = req.headers['authorization'] || ''
-		const providedBuffer = Buffer.from(String(provided))
+		const authHeader = req.headers['authorization'] || ''
+		// Extract token from "Bearer TOKEN" format, or use raw value if no prefix
+		const provided = String(authHeader).startsWith('Bearer ') 
+			? String(authHeader).slice(7) 
+			: String(authHeader)
+		const providedBuffer = Buffer.from(provided)
 		const secretBuffer = Buffer.from(AUTH_SECRET)
 		
 		if (providedBuffer.length !== secretBuffer.length || !timingSafeEqual(providedBuffer, secretBuffer)) {
