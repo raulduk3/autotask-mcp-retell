@@ -17,7 +17,7 @@
 	"post_call_analysis_model": "gpt-4.1-mini",
 	"pii_config": {
 		"mode": "post_call",
-		"categories": ["phone_number", "email_address", "person_name"]
+		"categories": ["phone_number", "email", "person_name"]
 	},
 	"analysis_successful_prompt": "Evaluate if the call was successful: 1) Was a support ticket created? 2) Did the agent collect contact info (name, phone/email, preference)? 3) Was the issue clearly described with type and priority? 4) If a technician was assigned, was transfer attempted? A successful call ends with a ticket number confirmed or transfer completed.",
 	"analysis_summary_prompt": "Summarize in 1-3 sentences: Who called (name, company if mentioned), what IT issue they reported (incident vs service request), ticket number created, and outcome (transferred to tech, or ticket logged for follow-up).",
@@ -82,7 +82,9 @@
 		"start_speaker": "agent",
 		"default_dynamic_variables": {
 			"company_id": "__COMPANY_ID__",
-			"queue_id": "__QUEUE_ID__"
+			"queue_id": "__QUEUE_ID__",
+			"transfer_phone": "",
+			"assigned_tech": ""
 		},
 		"knowledge_base_ids": [],
 		"kb_config": {
@@ -92,13 +94,13 @@
 		"is_published": false,
 		"mcps": [
 			{
+				"id": "__MCP_ID__",
 				"name": "Autotask",
+				"url": "__MCP_SERVER_URL__",
 				"headers": {
 					"Authorization": "__MCP_AUTH_SECRET__"
 				},
-				"id": "__MCP_ID__",
 				"query_params": {},
-				"url": "__MCP_SERVER_URL__",
 				"timeout_ms": 10000
 			}
 		]
