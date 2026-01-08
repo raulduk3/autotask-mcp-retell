@@ -55,7 +55,7 @@
 					"prompt": "{{transfer_phone}}"
 				},
 				"name": "transfer_call",
-				"description": "Transfer the call to a human agent",
+				"description": "Transfer the call to a human agent when transfer_phone is available",
 				"ignore_e164_validation": false,
 				"transfer_option": {
 					"type": "cold_transfer",
@@ -65,10 +65,26 @@
 				"type": "transfer_call"
 			},
 			{
+				"execution_message_description": "Looking up your information now.",
+				"speak_after_execution": false,
+				"name": "lookupCompanyContact",
+				"description": "Look up company and contact in Autotask. Input: organizationName, firstName, lastName, createIfNotFound (optional). Returns companyId, contactId, emailAddress, phone, isNew, message.",
+				"response_variables": {
+					"company_id": "companyId",
+					"contact_id": "contactId",
+					"email_on_file": "emailAddress",
+					"phone_on_file": "phone",
+					"is_new_contact": "isNew"
+				},
+				"mcp_id": "__MCP_ID__",
+				"type": "mcp",
+				"speak_during_execution": true
+			},
+			{
 				"execution_message_description": "Creating your ticket now.",
 				"speak_after_execution": false,
 				"name": "createTicket",
-				"description": "Create an Autotask ticket (service request or incident)",
+				"description": "Create an Autotask ticket (service request or incident). Requires companyId from lookupCompanyContact. Input: companyId, contactId, isNewContact, contactName, contactPhone, contactEmail, preferredContactMethod, issueDescription, title, ticketType (1=Service Request, 2=Incident), priority (4=P1, 1=P2, 2=P3, 5=P4), externalID.",
 				"response_variables": {
 					"assigned_tech": "assigned_tech",
 					"ticket_number": "ticket_number",
@@ -77,14 +93,34 @@
 				"mcp_id": "__MCP_ID__",
 				"type": "mcp",
 				"speak_during_execution": true
+			},
+			{
+				"execution_message_description": "Looking up your ticket now.",
+				"speak_after_execution": false,
+				"name": "getTicket",
+				"description": "Retrieve details of an existing Autotask ticket. Input: ticketId. Returns ticket_number, title, ticket_status, priority, assigned_tech, transfer_phone.",
+				"response_variables": {
+					"ticket_number": "ticket_number",
+					"assigned_tech": "assigned_tech",
+					"transfer_phone": "transfer_phone",
+					"ticket_status": "ticket_status"
+				},
+				"mcp_id": "__MCP_ID__",
+				"type": "mcp",
+				"speak_during_execution": true
 			}
 		],
 		"start_speaker": "agent",
 		"default_dynamic_variables": {
-			"company_id": "__COMPANY_ID__",
-			"queue_id": "__QUEUE_ID__",
+			"company_id": "",
+			"contact_id": "",
+			"email_on_file": "",
+			"phone_on_file": "",
+			"is_new_contact": "",
 			"transfer_phone": "",
-			"assigned_tech": ""
+			"assigned_tech": "",
+			"ticket_number": "",
+			"ticket_status": ""
 		},
 		"knowledge_base_ids": [],
 		"kb_config": {

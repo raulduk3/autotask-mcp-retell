@@ -20,8 +20,6 @@ import pino from 'pino'
  * logger.info({ ticketId: 123 }, 'Ticket created')
  * logger.error({ error }, 'Failed to connect')
  * ```
- * 
- * @const {pino.Logger}
  */
 export const logger = pino({
     level: process.env.LOG_LEVEL || 'info',

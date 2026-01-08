@@ -1,12 +1,49 @@
+/**
+ * @fileoverview IP whitelist management for access control.
+ * 
+ * This module provides IP-based access control by loading allowed IP addresses
+ * from a `.whitelist` file and validating incoming requests against that list.
+ * Supports both IPv4 and IPv6 addresses, as well as localhost variants.
+ * 
+ * @module whitelist
+ * 
+ * @example
+ * ```typescript
+ * import { loadWhitelist, isWhitelisted, getClientIP } from './whitelist.js'
+ * 
+ * const whitelist = loadWhitelist()
+ * const clientIP = getClientIP(req)
+ * if (!isWhitelisted(clientIP, whitelist)) {
+ *   res.status(403).send('Forbidden')
+ * }
+ * ```
+ */
 import { readFileSync, existsSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { logger } from './utils/logger.js'
 
+/**
+ * Path to the whitelist configuration file.
+ * Located in the project root directory.
+ * @internal
+ */
 const WHITELIST_FILE = join(process.cwd(), '.whitelist')
 
 /**
- * Load IP addresses from the .whitelist file
- * @returns Array of whitelisted IP addresses
+ * Loads IP addresses from the `.whitelist` file.
+ * 
+ * Each line in the file represents one allowed IP address.
+ * Lines starting with `#` are treated as comments and ignored.
+ * Empty lines are also ignored. If the file doesn't exist,
+ * creates an empty whitelist template file.
+ * 
+ * @returns Array of validated IP addresses
+ * 
+ * @example
+ * ```typescript
+ * const whitelist = loadWhitelist()
+ * console.log(`Loaded ${whitelist.length} whitelisted IPs`)
+ * ```
  */
 export function loadWhitelist(): string[] {
 	try {
@@ -36,10 +73,26 @@ export function loadWhitelist(): string[] {
 }
 
 /**
- * Check if an IP address is in the whitelist
+ * Checks if an IP address is in the whitelist.
+ * 
+ * Handles localhost variants by treating them as equivalent:
+ * - `127.0.0.1` (IPv4 localhost)
+ * - `::1` (IPv6 localhost)
+ * - `::ffff:127.0.0.1` (IPv4-mapped IPv6)
+ * - `localhost` (hostname)
+ * 
+ * If any localhost variant is whitelisted, all localhost variants are allowed.
+ * 
  * @param ip - IP address to check
- * @param whitelist - Array of whitelisted IPs
- * @returns true if IP is whitelisted
+ * @param whitelist - Array of whitelisted IP addresses
+ * @returns True if the IP is whitelisted
+ * 
+ * @example
+ * ```typescript
+ * const whitelist = ['192.168.1.100', '127.0.0.1']
+ * isWhitelisted('::1', whitelist) // true (localhost equivalent)
+ * isWhitelisted('10.0.0.1', whitelist) // false
+ * ```
  */
 export function isWhitelisted(ip: string, whitelist: string[]): boolean {
 	// Support localhost variations
@@ -52,9 +105,24 @@ export function isWhitelisted(ip: string, whitelist: string[]): boolean {
 }
 
 /**
- * Basic IP address validation
- * @param ip - IP address to validate
- * @returns true if IP format is valid
+ * Validates an IP address format.
+ * 
+ * Supports IPv4 addresses with standard dotted-decimal notation,
+ * IPv6 addresses with colon-separated hex notation, and the
+ * `localhost` hostname.
+ * 
+ * @param ip - IP address string to validate
+ * @returns True if the IP format is valid
+ * @internal
+ * 
+ * @example
+ * ```typescript
+ * isValidIP('192.168.1.1')    // true
+ * isValidIP('::1')            // true
+ * isValidIP('localhost')      // true
+ * isValidIP('invalid')        // false
+ * isValidIP('999.999.999.999') // false (octet > 255)
+ * ```
  */
 function isValidIP(ip: string): boolean {
 	// IPv4 pattern
@@ -73,10 +141,25 @@ function isValidIP(ip: string): boolean {
 import { Request } from 'express'
 
 /**
- * Get the client IP address from the request
- * Handles proxies and forwarded headers
+ * Extracts the client IP address from an Express request.
+ * 
+ * Checks headers in the following order for proxy support:
+ * 1. `X-Forwarded-For` - Standard proxy header (uses first IP if multiple)
+ * 2. `X-Real-IP` - Nginx reverse proxy header
+ * 3. `req.ip` - Express trust proxy setting
+ * 4. `req.socket.remoteAddress` - Direct socket connection
+ * 
  * @param req - Express request object
- * @returns Client IP address
+ * @returns Client IP address, or 'unknown' if not determinable
+ * 
+ * @example
+ * ```typescript
+ * app.use((req, res, next) => {
+ *   const clientIP = getClientIP(req)
+ *   logger.info({ clientIP }, 'Request received')
+ *   next()
+ * })
+ * ```
  */
 export function getClientIP(req: Request): string {
 	// Check various headers for proxy scenarios

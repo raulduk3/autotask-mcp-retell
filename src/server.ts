@@ -22,28 +22,24 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 
 /**
  * HTTP server port from configuration.
- * @const {number}
  */
 const PORT = config.port
 
 /**
  * Bearer token for MCP endpoint authentication.
  * Empty string disables authentication.
- * @const {string}
  */
 const AUTH_SECRET = config.auth.secret
 
 /**
  * Loaded IP whitelist from .whitelist file.
  * Empty array disables IP filtering.
- * @const {string[]}
  */
 const IP_WHITELIST = loadWhitelist()
 
 /**
  * Singleton MCP server instance shared across all sessions.
  * Reusing a single instance reduces memory overhead.
- * @const {McpServer}
  */
 const mcpServer = createMcpServer()
 logger.info('MCP server instance created')
@@ -51,27 +47,23 @@ logger.info('MCP server instance created')
 /**
  * Active session transports keyed by session ID.
  * Each session has its own StreamableHTTPServerTransport for SSE streaming.
- * @type {Object.<string, StreamableHTTPServerTransport>}
  */
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {}
 
 /**
  * Session creation timestamps for TTL enforcement.
- * @type {Object.<string, number>}
  */
 const sessionCreatedAt: { [sessionId: string]: number } = {}
 
 /**
  * Session timeout in milliseconds (15 minutes).
  * Sessions inactive longer than this are automatically cleaned up.
- * @const {number}
  */
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000
 
 /**
  * Maximum concurrent sessions allowed.
  * Returns 503 when limit is reached to prevent memory exhaustion.
- * @const {number}
  */
 const MAX_SESSIONS = 100
 
@@ -152,12 +144,6 @@ setInterval(() => {
  * 
  * If the whitelist is non-empty, requests from non-whitelisted IPs
  * receive a 403 Forbidden response. Supports proxy headers.
- * 
- * @function validateIPWhitelist
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
- * @param {Function} next - Next middleware function
- * @returns {void}
  */
 function validateIPWhitelist(req: Request, res: Response, next: () => void): void {
 	const clientIP = getClientIP(req)
@@ -182,12 +168,6 @@ function validateIPWhitelist(req: Request, res: Response, next: () => void): voi
  * Uses timing-safe comparison to prevent timing attacks.
  * If AUTH_SECRET is empty, authentication is disabled.
  * Accepts both "Bearer TOKEN" and raw "TOKEN" formats for flexibility.
- * 
- * @function validateAuth
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
- * @param {Function} next - Next middleware function
- * @returns {void}
  */
 function validateAuth(req: Request, res: Response, next: () => void): void {
 	if (AUTH_SECRET) {
@@ -213,7 +193,6 @@ function validateAuth(req: Request, res: Response, next: () => void): void {
 
 /**
  * Express application instance.
- * @const {express.Application}
  */
 const app = express()
 
@@ -239,12 +218,6 @@ app.use(express.json({ limit: '50kb' }))
 /**
  * Validates incoming JSON-RPC request body structure.
  * Ensures requests have valid JSON-RPC 2.0 format with method field.
- * 
- * @function validateRequestBody
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
- * @param {Function} next - Next middleware function
- * @returns {void}
  */
 function validateRequestBody(req: Request, res: Response, next: () => void): void {
 	if (!req.body?.jsonrpc || req.body.jsonrpc !== '2.0' || !req.body.method) {
@@ -467,7 +440,6 @@ app.delete('/mcp', validateIPWhitelist, validateAuth, async (req: Request, res: 
  * - Uptime
  * 
  * @route GET /health
- * @returns {Object} Health status JSON
  */
 app.get('/health', (req: Request, res: Response) => {
 	const memUsage = process.memoryUsage()
@@ -505,7 +477,6 @@ app.use((req, res) => {
 
 /**
  * HTTP server instance.
- * @const {http.Server}
  */
 const server = app.listen(PORT, () => {
 	logger.info(
@@ -525,10 +496,7 @@ const server = app.listen(PORT, () => {
  * Closes all active session transports and waits for the HTTP server
  * to finish handling pending requests before exiting.
  * 
- * @async
- * @function shutdown
- * @param {string} signal - The signal that triggered shutdown (SIGINT or SIGTERM)
- * @returns {Promise<void>}
+ * @param signal - The signal that triggered shutdown (SIGINT or SIGTERM)
  */
 async function shutdown(signal: string) {
 	logger.info({ signal, sessions: Object.keys(transports).length }, 'Shutting down')

@@ -13,15 +13,16 @@
 		"../src/utils/logger.ts",
 		"../src/utils/inMemoryEventStore.ts"
 	],
-	"out": "../docs-html",
-	"name": "Autotask MCP Server",
+	"out": "../docs-pdf",
+	"name": "Autotask MCP Server - API Documentation",
 	"readme": "../README.md",
 	"includeVersion": true,
 	"excludePrivate": false,
 	"excludeInternal": false,
+	"plugin": ["typedoc-plugin-markdown"],
 	"githubPages": false,
 	"categorizeByGroup": true,
-	"navigationLinks": {
-		"GitHub": "https://github.com/raulduk3/autotask-mcp-retell"
-	}
+	"categoryOrder": ["Server", "API", "MCP", "Configuration", "Utilities", "*"],
+	"hideBreadcrumbs": true,
+	"hidePageHeader": true
 }

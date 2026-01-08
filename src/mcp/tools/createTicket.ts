@@ -6,9 +6,8 @@
  */
 import { z } from 'zod'
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
-import { createTicket, getTicketById, getResourceById } from '../../api/autotask.js'
+import { createTicket, getTicketById, getResourceById, updateContact } from '../../api/autotask.js'
 import { logger } from '../../utils/logger.js'
-import { isValidTenant, config } from '../../config.js'
 
 /**
  * Schema definition for the createTicket MCP tool.
@@ -17,15 +16,11 @@ import { isValidTenant, config } from '../../config.js'
  * using Zod for runtime type checking. The schema is registered with the MCP server
  * and exposed to connected AI agents.
  * 
- * @property {string} name - Tool identifier: 'createTicket'
- * @property {string} description - Human-readable tool description for the AI agent
- * @property {z.ZodObject} inputSchema - Zod schema validating all required ticket fields
- * 
  * @example
+ * ```typescript
  * // Tool input example:
  * {
  *   companyId: '12345',
- *   queueId: '67890',
  *   contactName: 'John Doe',
  *   contactPhone: '555-1234',
  *   contactEmail: 'john@example.com',
@@ -36,18 +31,18 @@ import { isValidTenant, config } from '../../config.js'
  *   priority: '2',    // P3 Medium
  *   externalID: 'retell-call-abc123'
  * }
- * 
- * @const {Object}
+ * ```
  */
 export const createTicketSchema = {
 	name: 'createTicket',
-	description: 'Create an Autotask ticket (service request or incident)',
+	description: 'Create an Autotask ticket (service request or incident). Use lookupCompanyContact first to get companyId and contactId. If isNewContact is true and contact info is provided, the contact record will be updated.',
 	inputSchema: z.object({
-		companyId: z.string().describe('Autotask company ID for the tenant'),
-		queueId: z.string().describe('Autotask queue ID for ticket routing'),
-		contactName: z.string().describe('Name of the person reporting the issue'),
-		contactPhone: z.string().describe('Phone number of the contact'),
-		contactEmail: z.string().describe('Email of the contact'),
+		companyId: z.string().describe('Autotask company ID (from lookupCompanyContact result)'),
+		contactId: z.string().optional().describe('Autotask contact ID (from lookupCompanyContact result)'),
+		isNewContact: z.boolean().optional().default(false).describe('Set to true if this is a newly created contact that needs callback info updated'),
+		contactName: z.string().optional().describe('Name of the person reporting the issue (optional - contact already linked via contactId)'),
+		contactPhone: z.string().optional().describe('Phone number of the contact (optional - only needed for new contacts or to update existing)'),
+		contactEmail: z.string().optional().describe('Email of the contact (optional - only needed for new contacts or to update existing)'),
 		preferredContactMethod: z
 			.enum(['phone', 'email'])
 			.describe('Preferred method of contact: phone or email'),
@@ -65,36 +60,18 @@ export const createTicketSchema = {
  * Handles the createTicket tool invocation from MCP clients.
  * 
  * This handler:
- * 1. Validates the tenant (companyId) against the whitelist
- * 2. Creates a ticket in Autotask via the REST API
- * 3. Retrieves ticket details including ticket number
- * 4. Optionally retrieves assigned resource details for call transfer
+ * 1. Creates a ticket in Autotask via the REST API
+ * 2. Retrieves ticket details including ticket number
+ * 3. Optionally retrieves assigned resource details for call transfer
  * 
- * @async
- * @function createTicketHandler
- * @param {Object} params - The validated tool parameters
- * @param {string} params.companyId - Autotask company ID for tenant isolation
- * @param {string} params.queueId - Autotask queue ID for ticket routing
- * @param {string} params.contactName - Name of the person reporting the issue
- * @param {string} [params.contactPhone] - Contact's phone number
- * @param {string} [params.contactEmail] - Contact's email address
- * @param {string} params.issueDescription - Detailed description of the issue
- * @param {'phone'|'email'} params.preferredContactMethod - How the contact prefers to be reached
- * @param {string} params.title - Brief title/summary of the ticket
- * @param {'1'|'2'} params.ticketType - '1' for Service Request, '2' for Incident
- * @param {'4'|'1'|'2'|'5'} params.priority - Priority level: 4=P1 Critical, 1=P2 High, 2=P3 Medium, 5=P4 Low
- * @param {string} params.externalID - External reference ID from Retell call
- * 
- * @returns {Promise<CallToolResult>} MCP tool result with ticket details or error
- * @returns {Array<{type: 'text', text: string}>} result.content - JSON string with status, ticket_id, ticket_number, and optionally assigned_tech and transfer_phone
- * @returns {boolean} [result.isError] - True if the operation failed
- * 
- * @throws {Error} Propagates Autotask API errors wrapped in the result object
+ * @param params - The validated tool parameters
+ * @returns MCP tool result with ticket details or error
  * 
  * @example
+ * ```typescript
  * // Success response:
  * {
- *   content: [{ type: 'text', text: '{"status":"success","ticket_id":"123","ticket_number":"T20240101.0001","assigned_tech":"Jane Smith","transfer_phone":"555-9999"}' }]
+ *   content: [{ type: 'text', text: '{"status":"success","ticket_id":"123","ticket_number":"T20240101.0001"}' }]
  * }
  * 
  * // Error response:
@@ -102,10 +79,12 @@ export const createTicketSchema = {
  *   content: [{ type: 'text', text: '{"status":"error","error":"Invalid company ID: 99999"}' }],
  *   isError: true
  * }
+ * ```
  */
 export async function createTicketHandler(params: {
 	companyId: string
-	queueId: string
+	contactId?: string
+	isNewContact?: boolean
 	contactName: string
 	contactPhone?: string
 	contactEmail?: string
@@ -116,14 +95,16 @@ export async function createTicketHandler(params: {
 	priority: '4' | '1' | '2' | '5'
 	externalID: string
 }): Promise<CallToolResult> {
-	const companyId = parseInt(params.companyId) || config.autotask.companyId
-	const queueId = parseInt(params.queueId) || config.autotask.queueId
+	const companyId = parseInt(params.companyId)
+	const contactId = params.contactId ? parseInt(params.contactId) : undefined
+	const isNewContact = params.isNewContact || false
 
 	logger.info(
 		{
 			tool: 'createTicket',
 			companyId,
-			queueId,
+			contactId,
+			isNewContact,
 			externalID: params.externalID,
 			ticketType: params.ticketType,
 			priority: params.priority,
@@ -132,28 +113,41 @@ export async function createTicketHandler(params: {
 		'Tool call: createTicket'
 	)
 
-	// Validate tenant
-	if (!isValidTenant(companyId)) {
-		logger.warn({ companyId, queueId }, 'Invalid tenant - not in whitelist')
-		return {
-			content: [
-				{
-					type: 'text',
-					text: JSON.stringify({
-						status: 'error',
-						error: `Invalid company ID: ${companyId}`
-					})
-				}
-			],
-			isError: true
-		}
-	}
-
 	try {
-		const result = await createTicket({ ...params, companyId, queueId })
+		// Update contact info if:
+		// 1. This is a new contact that needs callback info, OR
+		// 2. Contact info is provided and we have a contactId (update existing contact too)
+		logger.debug({ 
+			contactId, 
+			contactEmail: params.contactEmail, 
+			contactPhone: params.contactPhone,
+			hasContactId: !!contactId,
+			hasEmail: !!params.contactEmail,
+			hasPhone: !!params.contactPhone
+		}, 'Checking if contact update is needed')
+		
+		if (contactId && (params.contactEmail || params.contactPhone)) {
+			logger.info({ contactId, companyId, email: params.contactEmail, phone: params.contactPhone }, 'Attempting to update contact info')
+			try {
+				await updateContact(companyId, contactId, {
+					emailAddress: params.contactEmail,
+					phone: params.contactPhone
+				})
+				logger.info({ contactId, email: params.contactEmail, phone: params.contactPhone, isNewContact }, 'Updated contact with callback info')
+			} catch (updateError) {
+				logger.warn({ error: updateError, contactId }, 'Failed to update contact info, continuing with ticket creation')
+			}
+		} else {
+			logger.debug({ contactId, hasEmail: !!params.contactEmail, hasPhone: !!params.contactPhone }, 'Skipping contact update - no contactId or no contact info provided')
+		}
+
+		const result = await createTicket({ ...params, companyId, contactId })
 		const ticketId = result.itemId || result.item?.id || 'Unknown'
 
 		logger.info({ ticketId, externalID: params.externalID }, 'Ticket created successfully via tool')
+
+		// Wait for auto-assignment workflow to complete before fetching ticket details
+		await new Promise(resolve => setTimeout(resolve, 1500))
 
 		// Get ticket details to retrieve ticket number and assigned resource
 		let ticketDetails = null

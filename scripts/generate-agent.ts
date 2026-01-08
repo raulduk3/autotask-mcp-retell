@@ -21,6 +21,7 @@
  * @module scripts/generate-agent
  */
 
+// Synchronous file system and path utilities
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { createInterface } from 'readline'
@@ -73,7 +74,7 @@ const PROMPT_PATH = join(process.cwd(), 'retell-agent-prompt.md')
  * Output directory for generated agent configurations.
  * @const {string}
  */
-const OUTPUT_DIR = join(process.cwd(), 'scripts', 'agents')
+const OUTPUT_DIR = join(process.cwd(), 'agents')
 
 /**
  * Path to the environment file for MCP configuration.
@@ -412,33 +413,33 @@ async function main() {
 	
 	const envConfig = loadEnvConfig()
 	
-	console.log('\n📝 Generating agent configuration...\n')
-	console.log(`   Agent Name:    ${config.agentName}`)
-	console.log(`   Company:       ${config.companyName}`)
-	console.log(`   Company ID:    ${config.companyId}`)
-	console.log(`   Queue ID:      ${config.queueId}`)
-	console.log(`   MCP URL:       ${envConfig.mcpServerUrl}`)
-	console.log(`   MCP ID:        ${envConfig.mcpId}`)
-	console.log(`   Auth Secret:   ${envConfig.mcpAuthSecret ? '****' + envConfig.mcpAuthSecret.slice(-4) : '⚠️  NOT SET'}`)
+	console.log('Generating agent configuration...\n')
+	console.log(`   • Agent Name:    ${config.agentName}`)
+	console.log(`   • Company:       ${config.companyName}`)
+	console.log(`   • Company ID:    ${config.companyId}`)
+	console.log(`   • Queue ID:      ${config.queueId}`)
+	console.log(`   • MCP URL:       ${envConfig.mcpServerUrl}`)
+	console.log(`   • MCP ID:        ${envConfig.mcpId}`)
+	console.log(`   • Auth Secret:   ${envConfig.mcpAuthSecret ? '****' + envConfig.mcpAuthSecret.slice(-4) : '⚠️  NOT SET'}`)
 	
 	if (!envConfig.mcpAuthSecret) {
-		console.warn('\n⚠️  Warning: MCP_AUTH_SECRET not set in .env - agent will not authenticate')
+		console.warn('\nWarning: MCP_AUTH_SECRET not set in .env - agent will not authenticate')
 	}
 	
 	if (envConfig.mcpServerUrl === 'https://your-server.example.com/mcp') {
-		console.warn('⚠️  Warning: MCP_SERVER_URL not set in .env - using placeholder')
+		console.warn('Warning: MCP_SERVER_URL not set in .env - using placeholder')
 	}
 	
 	const content = generateAgent(config, envConfig)
 	const filepath = saveAgent(config, content)
 	
-	console.log(`\n✅ Agent configuration saved to: ${filepath}`)
+	console.log(`\nAgent configuration saved to: ${filepath}`)
 	
 	// Add to tenants file
 	addToTenants(config.companyId, config.queueId, config.companyName)
 	
 	console.log(`
-📋 Next steps:
+Next steps:
    1. Import ${filepath} into Retell dashboard
    2. Configure the agent's phone number in Retell
    3. Test with a call to verify ticket creation

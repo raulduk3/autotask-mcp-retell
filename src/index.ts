@@ -1,12 +1,38 @@
 /**
- * Entry point that suppresses known deprecation warnings from dependencies
+ * @fileoverview Application entry point with Node.js warning suppression.
+ * 
+ * This module serves as the bootstrap entry point for the Autotask MCP server.
+ * It patches the Node.js warning system to suppress known deprecation warnings
+ * from third-party dependencies (specifically the fs.Stats constructor warning
+ * from pino-pretty) before loading the main server module.
+ * 
+ * @module index
+ * 
+ * @example
+ * ```bash
+ * # Start the server
+ * bun run dev
+ * # or
+ * npm run start
+ * ```
  */
 
-// Suppress specific Node.js warnings before any imports
+/**
+ * Original Node.js warning emitter function.
+ * Stored to allow proxying while preserving original behavior for non-suppressed warnings.
+ */
 const originalEmitWarning = process.emitWarning
 
-// Override emitWarning to suppress known deprecation warnings from dependencies
-// Using type assertion due to complex function overloads
+/**
+ * Overrides Node.js process.emitWarning to suppress known deprecation warnings.
+ * 
+ * This proxy function intercepts all Node.js warnings and filters out specific
+ * deprecation warnings that originate from dependencies we cannot control.
+ * All other warnings are passed through to the original handler.
+ * 
+ * Suppressed warnings:
+ * - `fs.Stats constructor is deprecated` - Triggered by pino-pretty's internal usage
+ */
 process.emitWarning = ((warning: string | Error, ...rest: unknown[]): void => {
 	const warningStr = typeof warning === 'string' ? warning : warning.message || ''
 	
@@ -19,5 +45,9 @@ process.emitWarning = ((warning: string | Error, ...rest: unknown[]): void => {
 	originalEmitWarning(warning, ...(rest as []))
 }) as typeof process.emitWarning
 
-// Now import and start the server
+/**
+ * Import and start the main server module.
+ * This triggers the server initialization and begins listening for connections.
+ * @see {@link module:server}
+ */
 import './server.js'
