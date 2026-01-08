@@ -14,7 +14,7 @@ configDotenv({
 		process.env.NODE_ENV === 'test'
 			? '.env.test'
 			: process.env.NODE_ENV === 'production'
-				? '.env.production'
+				? '.env'
 				: '.env.development',
 })
 
