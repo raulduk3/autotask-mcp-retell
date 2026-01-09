@@ -108,6 +108,20 @@
 				"mcp_id": "__MCP_ID__",
 				"type": "mcp",
 				"speak_during_execution": true
+			},
+			{
+				"execution_message_description": "Checking technician availability.",
+				"speak_after_execution": false,
+				"name": "checkResourceAvailability",
+				"description": "Check if a technician's phone line is available for call transfer via BVoip. Input: phoneNumber (the technician's phone number or extension to check). Returns availability status and whether transfer is possible.",
+				"response_variables": {
+					"is_available": "isAvailable",
+					"extension_name": "extensionName",
+					"availability_message": "message"
+				},
+				"mcp_id": "__MCP_ID__",
+				"type": "mcp",
+				"speak_during_execution": true
 			}
 		],
 		"start_speaker": "agent",
@@ -120,7 +134,10 @@
 			"transfer_phone": "",
 			"assigned_tech": "",
 			"ticket_number": "",
-			"ticket_status": ""
+			"ticket_status": "",
+			"is_available": "",
+			"extension_name": "",
+			"availability_message": ""
 		},
 		"knowledge_base_ids": [],
 		"kb_config": {
