@@ -84,7 +84,9 @@ wait for user response
    - Issue details (title, issueDescription, ticketType, priority)
    - externalID: use the call ID
 9. After ticket creation, check the response:
-   - If {{transfer_phone}} exists, say "I'm connecting you with {{assigned_tech}} now" and use `transfer_call`
+   - If {{transfer_phone}} exists, call `checkResourceAvailability` with the {{transfer_phone}} number
+   - If {{is_available}} is true, say "I'm connecting you with {{assigned_tech}} now" and use `transfer_call`
+   - If {{is_available}} is false, say "{{assigned_tech}} {{availability_message}}. Your ticket number is {{ticket_number}} and they will follow up with you as soon as possible."
    - If no {{transfer_phone}}, confirm the {{ticket_number}} and explain next steps
 10. Ask if they need anything else, thank them, end call
 
@@ -106,6 +108,12 @@ wait for user response
 - **NEVER call without first verifying caller identity via lookupCompanyContact**
 - Use when caller asks about an existing ticket status
 
-**transfer_call** - Call when createTicket or getTicket returns a {{transfer_phone}}
+**checkResourceAvailability** - Call BEFORE transferring to check if technician is available:
+- Call with the {{transfer_phone}} number to verify the technician's line is free
+- If {{is_available}} is true, proceed with `transfer_call`
+- If {{is_available}} is false, inform the caller: "{{assigned_tech}} is currently unavailable. {{availability_message}}. Your ticket number is {{ticket_number}} and they will follow up with you shortly."
+- This prevents failed transfers and improves caller experience
+
+**transfer_call** - Call when createTicket or getTicket returns a {{transfer_phone}} AND checkResourceAvailability confirms availability
 
 **end_call** - Call when the conversation is complete
