@@ -9,6 +9,7 @@
  * - `lookupCompanyContact` — Search for companies and contacts by name
  * - `createTicket` — Create new service requests or incidents
  * - `getTicket` — Retrieve existing ticket details
+ * - `checkResourceAvailability` — Check if a technician's phone line is available via BVoip
  * 
  * @module mcp/server
  */
@@ -16,6 +17,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { createTicketSchema, createTicketHandler } from './tools/createTicket.js'
 import { lookupCompanyContactSchema, lookupCompanyContactHandler } from './tools/lookupCompanyContact.js'
 import { getTicketSchema, getTicketHandler } from './tools/getTicket.js'
+import { checkResourceAvailabilitySchema, checkResourceAvailabilityHandler } from './tools/checkResourceAvailability.js'
 import { logger } from '../utils/logger.js'
 
 /**
@@ -147,8 +149,37 @@ export function createMcpServer(): McpServer {
 		}
 	)
 
+	// Register the checkResourceAvailability tool
+	server.registerTool(
+		checkResourceAvailabilitySchema.name,
+		{
+			description: checkResourceAvailabilitySchema.description,
+			inputSchema: checkResourceAvailabilitySchema.inputSchema
+		},
+		async (params) => {
+			try {
+				logger.info({ params, tool: checkResourceAvailabilitySchema.name }, 'Tool handler called')
+				return await checkResourceAvailabilityHandler(params as Parameters<typeof checkResourceAvailabilityHandler>[0])
+			} catch (error) {
+				logger.error({ error, tool: checkResourceAvailabilitySchema.name }, 'Unexpected error in tool handler')
+				return {
+					content: [
+						{
+							type: 'text',
+							text: JSON.stringify({
+								status: 'error',
+								error: error instanceof Error ? error.message : 'Unknown error occurred'
+							})
+						}
+					],
+					isError: true
+				}
+			}
+		}
+	)
+
 	logger.info(
-		{ tools: [lookupCompanyContactSchema.name, createTicketSchema.name, getTicketSchema.name] },
+		{ tools: [lookupCompanyContactSchema.name, createTicketSchema.name, getTicketSchema.name, checkResourceAvailabilitySchema.name] },
 		'MCP server created with tools registered'
 	)
 
