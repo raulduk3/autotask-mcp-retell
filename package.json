@@ -19,7 +19,6 @@
 		"docs": "typedoc --options config/typedoc.json",
 		"docs:html": "typedoc --options config/typedoc-html.json",
 		"docs:md": "typedoc --options config/typedoc.json --out docs",
-		"docs:pdf": "bun run docs && bun scripts/generate-pdf-docs.ts",
 		"generate:agent": "bun scripts/generate-agent.ts"
 	},
 	"dependencies": {
