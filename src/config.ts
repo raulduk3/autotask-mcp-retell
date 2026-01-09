@@ -41,6 +41,13 @@ export interface Config {
 		/** Default company ID (fallback) */
 		companyId: number
 	}
+	/** BVoip 1Stream API configuration */
+	bvoip: {
+		/** BVoip API key for authentication */
+		apiKey: string
+		/** BVoip portal base URL (default: https://portal.1stream.com) */
+		baseUrl: string
+	}
 }
 
 /**
@@ -109,6 +116,10 @@ export const config: Config = {
 		username: requireEnv('AUTOTASK_USERNAME'),
 		secret: requireEnv('AUTOTASK_SECRET'),
 		companyId: getEnvInt('AUTOTASK_COMPANY_ID', 0)
+	},
+	bvoip: {
+		apiKey: getEnv('BVOIP_API_KEY', ''),
+		baseUrl: getEnv('BVOIP_BASE_URL', 'https://portal.1stream.com')
 	}
 }
 
