@@ -101,7 +101,7 @@ export interface ResourceDetails {
 	/** Office phone number */
 	officePhone?: string
 	/** Mobile phone number (preferred for transfers) */
-	mobilePhone?: string
+	officePhone?: string
 	/** Home phone number */
 	homePhone?: string
 	/** Office phone extension */
@@ -138,8 +138,8 @@ export interface ContactDetails {
 	emailAddress?: string
 	/** Primary phone number */
 	phone?: string
-	/** Mobile phone number */
-	mobilePhone?: string
+	/** Office phone number */
+	officePhone?: string
 	/** Whether the contact is active */
 	isActive: boolean
 }
@@ -536,7 +536,7 @@ export async function getTicketById(ticketId: string): Promise<TicketDetails> {
  * @example
  * ```typescript
  * const resource = await getResourceById('789')
- * const transferPhone = resource.mobilePhone || resource.officePhone
+ * const transferPhone = resource.officePhone || resource.officePhone
  * console.log(`Transfer to ${resource.firstName} at ${transferPhone}`)
  * ```
  */
@@ -599,7 +599,7 @@ export async function getResourceById(resourceId: string): Promise<ResourceDetai
 						lastName: resource.lastName,
 						email: resource.email,
 						officePhone: resource.officePhone,
-						mobilePhone: resource.mobilePhone,
+						officePhone: resource.officePhone,
 						homePhone: resource.homePhone,
 						officeExtension: resource.officeExtension
 					})

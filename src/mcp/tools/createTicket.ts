@@ -170,7 +170,7 @@ export async function createTicketHandler(params: {
 				try {
 					resourceDetails = await getResourceById(ticketDetails.assignedResourceID)
 					// Prefer mobile phone, then office phone
-					transferPhone = resourceDetails.mobilePhone || resourceDetails.officePhone
+					transferPhone = resourceDetails.officePhone || resourceDetails.officePhone
 
 					logger.info(
 						{

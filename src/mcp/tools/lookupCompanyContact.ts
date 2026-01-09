@@ -176,7 +176,7 @@ export async function lookupCompanyContactHandler(params: {
 			const contact = contacts[0]
 			result.contactId = contact.id
 			result.emailAddress = contact.emailAddress
-			result.phone = contact.phone || contact.mobilePhone
+			result.phone = contact.phone || contact.officePhone 
 			result.isNew = false
 			result.message = `Found ${contacts.length} contacts with this name. Ask caller to verify their email or phone to confirm identity.`
 			return formatResult(result)
@@ -187,7 +187,7 @@ export async function lookupCompanyContactHandler(params: {
 
 		result.contactId = contact.id
 		result.emailAddress = contact.emailAddress
-		result.phone = contact.phone || contact.mobilePhone
+		result.phone = contact.phone || contact.officePhone
 		result.isNew = false
 
 		// Build verification message

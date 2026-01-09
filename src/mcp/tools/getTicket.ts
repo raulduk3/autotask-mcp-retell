@@ -99,7 +99,7 @@ export async function getTicketHandler(params: {
 		if (ticketDetails.assignedResourceID) {
 			try {
 				const resourceDetails = await getResourceById(ticketDetails.assignedResourceID)
-				const transferPhone = resourceDetails.mobilePhone || resourceDetails.officePhone
+				const transferPhone = resourceDetails.officePhone || resourceDetails.officePhone
 
 				responseData.assignedTech = `${resourceDetails.firstName} ${resourceDetails.lastName}`
 
